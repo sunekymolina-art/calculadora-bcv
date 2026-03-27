@@ -195,19 +195,152 @@
     }
 
     .cal-btn:hover { background: var(--border2); color: var(--primary); }
+    .cal-btn.open   { background: var(--border2); color: var(--primary); border-color: var(--primary); }
 
-    .cal-btn input[type="date"] {
+    /* ── Custom calendar popup ── */
+    .custom-cal {
       position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-      width: 100%;
-      height: 100%;
-      background: transparent;
-      border: none;
-      padding: 0;
-      font-size: 0;
+      top: calc(100% + 6px);
+      left: 0;
+      width: 280px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 0 1px rgba(59,130,246,0.08);
+      z-index: 200;
+      overflow: hidden;
+      animation: cal-in 0.13s ease;
     }
+    @keyframes cal-in {
+      from { opacity:0; transform:translateY(-6px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    .cal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 0.65rem;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      gap: 0.25rem;
+    }
+
+    .cal-nav {
+      width: 28px;
+      height: 28px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text3);
+      cursor: pointer;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      line-height: 1;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      flex-shrink: 0;
+    }
+    .cal-nav:hover { background: var(--surface3); color: var(--primary); border-color: var(--border2); }
+    .cal-nav:disabled, .cal-nav.hidden-nav { visibility: hidden; pointer-events: none; }
+
+    .cal-title { display: flex; align-items: center; gap: 0.2rem; flex: 1; justify-content: center; }
+
+    .cal-hbtn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0.25rem 0.45rem;
+      border-radius: 6px;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+    }
+    .cal-hbtn:hover { background: var(--surface3); color: var(--primary); border-color: var(--border2); }
+    .cal-hbtn.active { color: var(--primary); }
+
+    /* Days view */
+    .cal-days-wrap { padding: 0.55rem 0.65rem 0.65rem; }
+
+    .cal-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      margin-bottom: 0.3rem;
+    }
+    .cal-wday {
+      text-align: center;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--text3);
+      padding: 0.25rem 0;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .cal-wday.wknd { color: rgba(248,113,113,0.45); }
+
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+
+    .cal-cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      color: var(--text2);
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+      user-select: none;
+    }
+    .cal-cell:hover:not(.cal-off):not(.cal-dis) {
+      background: var(--primary-dim);
+      color: var(--primary);
+    }
+    .cal-cell.cal-today   { border-color: var(--primary); color: var(--primary); font-weight: 700; }
+    .cal-cell.cal-sel     { background: var(--primary) !important; color: #fff !important; font-weight: 700; border-color: transparent; }
+    .cal-cell.cal-dis     { color: rgba(248,113,113,0.35); cursor: not-allowed; text-decoration: line-through; }
+    .cal-cell.cal-off     { cursor: default; visibility: hidden; }
+    .cal-cell.cal-faded   { color: var(--text3); opacity: 0.35; cursor: not-allowed; }
+
+    /* Months view */
+    .cal-months-wrap { display: grid; grid-template-columns: repeat(3,1fr); gap: 0.3rem; padding: 0.65rem; }
+    .cal-mcell {
+      padding: 0.5rem 0.2rem;
+      text-align: center;
+      font-size: 0.82rem;
+      border-radius: 7px;
+      cursor: pointer;
+      color: var(--text2);
+      border: 1px solid transparent;
+      transition: background 0.1s, color 0.1s;
+    }
+    .cal-mcell:hover:not(.cal-m-sel) { background: var(--surface3); color: var(--text); }
+    .cal-mcell.cal-m-sel { background: var(--primary); color: #fff; font-weight: 700; }
+
+    /* Years view */
+    .cal-years-wrap {
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 0.4rem 0.5rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border2) transparent;
+    }
+    .cal-ycell {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.86rem;
+      border-radius: 7px;
+      cursor: pointer;
+      color: var(--text2);
+      text-align: center;
+      transition: background 0.1s, color 0.1s;
+    }
+    .cal-ycell:hover:not(.cal-y-sel) { background: var(--surface3); color: var(--text); }
+    .cal-ycell.cal-y-sel { background: var(--primary); color: #fff; font-weight: 700; }
 
     /* ── Error message ── */
     .err-msg {
@@ -509,9 +642,20 @@
         <label for="dateText">Fecha (días hábiles) — DD/MM/AAAA</label>
         <div class="date-wrapper">
           <input type="text" id="dateText" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="off" inputmode="numeric">
-          <div class="cal-btn" title="Abrir calendario">
-            📅
-            <input type="date" id="datePicker" min="2003-01-01">
+          <button class="cal-btn" id="calToggle" type="button" title="Abrir calendario" aria-label="Abrir calendario">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </button>
+          <!-- Custom calendar popup -->
+          <div id="customCal" class="custom-cal hidden">
+            <div class="cal-head">
+              <button class="cal-nav" id="calPrev" type="button" aria-label="Mes anterior">&#8249;</button>
+              <div class="cal-title">
+                <button class="cal-hbtn" id="calMonthBtn" type="button"></button>
+                <button class="cal-hbtn" id="calYearBtn"  type="button"></button>
+              </div>
+              <button class="cal-nav" id="calNext" type="button" aria-label="Mes siguiente">&#8250;</button>
+            </div>
+            <div id="calBody"></div>
           </div>
         </div>
         <div class="err-msg" id="dateError"></div>
@@ -1013,6 +1157,144 @@ async function selectDate(date) {
   }
 }
 
+/* ─── Custom calendar ────────────────────────────────────────────── */
+
+const MONTHS_ES   = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MONTHS_SHORT= ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+// Grid starts Monday → Lu Ma Mi Ju Vi Sá Do  (indices 5,6 = weekend columns)
+const WDAYS_ES    = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
+const CAL_MIN_YEAR = 2019;
+
+let calOpen  = false;
+let calView  = 'days';   // 'days' | 'months' | 'years'
+let calYear  = 0;
+let calMonth = 0;        // 0-11
+
+function openCalendar() {
+  const ref = activeDate || lastBizDay();
+  calYear   = ref.getFullYear();
+  calMonth  = ref.getMonth();
+  calView   = 'days';
+  renderCalendar();
+  $id('customCal').classList.remove('hidden');
+  $id('calToggle').classList.add('open');
+  calOpen = true;
+}
+
+function closeCalendar() {
+  $id('customCal').classList.add('hidden');
+  $id('calToggle').classList.remove('open');
+  calOpen = false;
+}
+
+function renderCalendar() {
+  $id('calMonthBtn').textContent = MONTHS_ES[calMonth];
+  $id('calYearBtn').textContent  = calYear;
+
+  // Highlight active header button
+  $id('calMonthBtn').classList.toggle('active', calView === 'months');
+  $id('calYearBtn').classList.toggle('active',  calView === 'years');
+
+  // Prev/Next only meaningful in day view
+  const hide = calView !== 'days';
+  $id('calPrev').classList.toggle('hidden-nav', hide);
+  $id('calNext').classList.toggle('hidden-nav', hide);
+
+  if      (calView === 'days')   renderCalDays();
+  else if (calView === 'months') renderCalMonths();
+  else                           renderCalYears();
+}
+
+function renderCalDays() {
+  const todayD = localToday();
+  const maxD   = localToday();
+
+  // JS getDay: 0=Sun..6=Sat → grid col (Mon=0): (jsDay+6)%7
+  const firstCol = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+
+  const wdHtml = WDAYS_ES.map((d, i) =>
+    `<div class="cal-wday${i >= 5 ? ' wknd' : ''}">${d}</div>`
+  ).join('');
+
+  let cells = '';
+  // Offset cells
+  for (let i = 0; i < firstCol; i++) cells += `<div class="cal-cell cal-off"></div>`;
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d    = new Date(calYear, calMonth, day);
+    const dow  = d.getDay();           // 0=Sun 6=Sat
+    const wknd = dow === 0 || dow === 6;
+    const hol  = !!holidayName(d);
+    const fut  = d > maxD;
+    const dis  = wknd || hol || fut;
+    const isTdy = d.getTime() === todayD.getTime();
+    const isSel = activeDate && d.getTime() === activeDate.getTime();
+
+    let cls = 'cal-cell';
+    if (dis)    cls += ' cal-dis';
+    if (isSel)  cls += ' cal-sel';
+    else if (isTdy) cls += ' cal-today';
+
+    const tip  = hol ? ` title="${holidayName(d)}"` : '';
+    const data = !dis ? ` data-iso="${calYear}-${pad2(calMonth+1)}-${pad2(day)}"` : '';
+    cells += `<div class="${cls}"${data}${tip}>${day}</div>`;
+  }
+
+  $id('calBody').innerHTML = `
+    <div class="cal-days-wrap">
+      <div class="cal-weekdays">${wdHtml}</div>
+      <div class="cal-grid" id="calGrid">${cells}</div>
+    </div>`;
+
+  $id('calGrid').querySelectorAll('[data-iso]').forEach(el => {
+    el.addEventListener('click', () => {
+      const [y, m, d] = el.dataset.iso.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      $id('dateText').value = dateToDisplay(date);
+      closeCalendar();
+      selectDate(date);
+    });
+  });
+}
+
+function renderCalMonths() {
+  const html = MONTHS_SHORT.map((name, i) => {
+    const sel = i === calMonth ? ' cal-m-sel' : '';
+    return `<div class="cal-mcell${sel}" data-m="${i}">${name}</div>`;
+  }).join('');
+  $id('calBody').innerHTML = `<div class="cal-months-wrap">${html}</div>`;
+  $id('calBody').querySelectorAll('.cal-mcell').forEach(el => {
+    el.addEventListener('click', () => {
+      calMonth = +el.dataset.m;
+      calView  = 'days';
+      renderCalendar();
+    });
+  });
+}
+
+function renderCalYears() {
+  const maxYear = localToday().getFullYear();
+  let html = '';
+  for (let y = maxYear; y >= CAL_MIN_YEAR; y--) {
+    const sel = y === calYear ? ' cal-y-sel' : '';
+    html += `<div class="cal-ycell${sel}" data-y="${y}">${y}</div>`;
+  }
+  $id('calBody').innerHTML = `<div class="cal-years-wrap" id="calYears">${html}</div>`;
+
+  // Scroll selected year into view
+  const active = $id('calYears').querySelector('.cal-y-sel');
+  if (active) active.scrollIntoView({ block: 'center' });
+
+  $id('calYears').querySelectorAll('.cal-ycell').forEach(el => {
+    el.addEventListener('click', () => {
+      calYear = +el.dataset.y;
+      calView = 'days';
+      renderCalendar();
+    });
+  });
+}
+
 /* ─── Date text input: auto-format as user types ─────────────────── */
 
 function autoFmtDate(e) {
@@ -1041,21 +1323,15 @@ function commitDateText() {
   if (!val || val.length < 10) { setDateErr(''); return; }
   const date = parseDisplay(val);
   if (!date) { setDateErr('Formato inválido. Usa DD/MM/AAAA.'); return; }
-  $id('datePicker').value = dateToISO(date);
   selectDate(date);
 }
 
 /* ─── Init ────────────────────────────────────────────────────────── */
 
 async function init() {
-  // Cap date picker at today
-  const todayDate = localToday();
-  $id('datePicker').max = dateToISO(todayDate);
-
   // Default to most recent business day
   const def = lastBizDay();
-  $id('dateText').value   = dateToDisplay(def);
-  $id('datePicker').value = dateToISO(def);
+  $id('dateText').value = dateToDisplay(def);
 
   // Fetch live rates (always useful for footer)
   try {
@@ -1074,16 +1350,46 @@ async function init() {
   $id('dateText').addEventListener('blur', commitDateText);
   $id('dateText').addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.target.blur(); }
+    if (e.key === 'Escape') closeCalendar();
   });
 
-  $id('datePicker').addEventListener('change', e => {
-    const v = e.target.value; // YYYY-MM-DD
-    if (!v) return;
-    const [y, m, d] = v.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    $id('dateText').value = dateToDisplay(date);
-    selectDate(date);
+  // Calendar toggle
+  $id('calToggle').addEventListener('click', e => {
+    e.stopPropagation();
+    calOpen ? closeCalendar() : openCalendar();
   });
+
+  // Prev / Next month
+  $id('calPrev').addEventListener('click', e => {
+    e.stopPropagation();
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+  $id('calNext').addEventListener('click', e => {
+    e.stopPropagation();
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+
+  // Month / Year header buttons
+  $id('calMonthBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    calView = calView === 'months' ? 'days' : 'months';
+    renderCalendar();
+  });
+  $id('calYearBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    calView = calView === 'years' ? 'days' : 'years';
+    renderCalendar();
+  });
+
+  // Keep clicks inside the popup from bubbling to document
+  $id('customCal').addEventListener('click', e => e.stopPropagation());
+
+  // Close on outside click
+  document.addEventListener('click', () => { if (calOpen) closeCalendar(); });
 
   $id('amountInput').addEventListener('input', updateResult);
 

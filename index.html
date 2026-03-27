@@ -268,53 +268,6 @@
       padding: 0.75rem 0 0.5rem;
     }
 
-    /* ── Result card ── */
-    .result-card {
-      background: linear-gradient(135deg, #0d1428 0%, #0c1220 100%);
-      border: 1px solid rgba(59,130,246,0.25);
-      border-radius: var(--radius);
-      padding: 1.5rem 1.25rem;
-      margin-bottom: 0.75rem;
-      text-align: center;
-      min-height: 110px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .result-inner { width: 100%; }
-
-    .result-from {
-      font-size: 0.8rem;
-      color: var(--text3);
-      margin-bottom: 0.4rem;
-    }
-
-    .result-amount {
-      font-size: 2.6rem;
-      font-weight: 700;
-      color: var(--text);
-      line-height: 1.05;
-      letter-spacing: -0.03em;
-    }
-
-    .result-currency {
-      font-size: 1.1rem;
-      font-weight: 400;
-      color: var(--text3);
-      margin-left: 0.2rem;
-    }
-
-    .result-note {
-      font-size: 0.78rem;
-      color: var(--text3);
-      margin-top: 0.45rem;
-    }
-
-    .result-placeholder {
-      font-size: 0.92rem;
-      color: var(--text3);
-    }
 
     /* ── Progress bar ── */
     .progress-wrap {
@@ -427,6 +380,98 @@
     }
 
     .hidden { display: none !important; }
+
+    /* ── Results grid ── */
+    #resultsWrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .res-placeholder {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+      color: var(--text3);
+      font-size: 0.9rem;
+    }
+
+    .res-row {
+      background: linear-gradient(135deg, #0d1428 0%, #0c1220 100%);
+      border: 1px solid rgba(59,130,246,0.18);
+      border-radius: var(--radius);
+      padding: 0.95rem 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      transition: border-color 0.15s;
+    }
+
+    .res-row:hover { border-color: rgba(59,130,246,0.4); }
+
+    .res-left {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      min-width: 0;
+    }
+
+    .res-flag { font-size: 1.5rem; line-height: 1; flex-shrink: 0; }
+
+    .res-name { font-size: 0.88rem; font-weight: 600; color: var(--text2); }
+    .res-code { font-size: 0.7rem;  color: var(--text3); margin-left: 0.2rem; }
+
+    .res-note {
+      font-size: 0.68rem;
+      color: var(--text3);
+      margin-top: 0.12rem;
+      white-space: nowrap;
+    }
+
+    .res-right {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      flex-shrink: 0;
+    }
+
+    .res-value {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .copy-btn {
+      width: 30px;
+      height: 30px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text3);
+      flex-shrink: 0;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+
+    .copy-btn:hover {
+      background: var(--surface3);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .copy-btn.copied {
+      background: rgba(16,185,129,0.12);
+      color: var(--green);
+      border-color: rgba(16,185,129,0.35);
+    }
   </style>
 </head>
 <body>
@@ -502,23 +547,11 @@
       </div>
     </div>
 
-    <div class="arrow-divider">↓</div>
-
-    <div class="form-group">
-      <label for="toCurrency">Moneda de destino</label>
-      <select id="toCurrency">
-        <option value="usd">Dólares (USD)</option>
-        <option value="bs">Bolívares (Bs)</option>
-        <option value="uvc">UVC</option>
-      </select>
-    </div>
   </div>
 
-  <!-- Result card -->
-  <div class="result-card" id="resultCard">
-    <div class="result-inner" id="resultContent">
-      <div class="result-placeholder">Ingresa un monto para ver la conversión</div>
-    </div>
+  <!-- Results: one row per target currency -->
+  <div id="resultsWrap">
+    <div class="res-placeholder">Ingresa un monto para ver la conversión</div>
   </div>
 
 </main>
@@ -672,7 +705,15 @@ function fmtDateTime(str) {
 
 /* ─── Conversion logic ────────────────────────────────────────────── */
 
-const LABELS = { bs: 'Bs', usd: 'USD', uvc: 'UVC' };
+const CURRENCY_INFO = {
+  bs:  { name: 'Bolívares', code: 'Bs',  icon: '🇻🇪' },
+  usd: { name: 'Dólares',   code: 'USD', icon: '🇺🇸' },
+  uvc: { name: 'UVC',       code: 'UVC', icon: '📊'  },
+};
+const ALL_CURRENCIES = ['bs', 'usd', 'uvc'];
+
+const COPY_SVG  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+const CHECK_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 
 function convert(amount, from, to, dolar, idi) {
   if (from === to) return amount;
@@ -687,16 +728,35 @@ function convert(amount, from, to, dolar, idi) {
   return null;
 }
 
-function rateNote(from, to, dolar, idi) {
+function rateSubnote(from, to, dolar, idi) {
   switch (`${from}→${to}`) {
-    case 'bs→usd':  return `1 USD = ${fmtVe(dolar)} Bs`;
-    case 'bs→uvc':  return `1 UVC = ${fmtVe(idi)} Bs`;
+    case 'bs→usd':
     case 'usd→bs':  return `1 USD = ${fmtVe(dolar)} Bs`;
-    case 'usd→uvc': return `1 USD = ${fmtVe(dolar)} Bs · 1 UVC = ${fmtVe(idi)} Bs`;
+    case 'bs→uvc':
     case 'uvc→bs':  return `1 UVC = ${fmtVe(idi)} Bs`;
-    case 'uvc→usd': return `1 UVC = ${fmtVe(idi)} Bs · 1 USD = ${fmtVe(dolar)} Bs`;
+    case 'usd→uvc': return `${fmtVe(dolar)} Bs/USD · ${fmtVe(idi)} Bs/UVC`;
+    case 'uvc→usd': return `${fmtVe(idi)} Bs/UVC · ${fmtVe(dolar)} Bs/USD`;
     default: return '';
   }
+}
+
+function copyValue(formattedStr, btn) {
+  const do_copy = () => {
+    btn.innerHTML = CHECK_SVG;
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = COPY_SVG; btn.classList.remove('copied'); }, 2000);
+  };
+  navigator.clipboard.writeText(formattedStr).then(do_copy).catch(() => {
+    // Fallback for restricted contexts
+    const ta = Object.assign(document.createElement('textarea'), {
+      value: formattedStr, style: 'position:fixed;opacity:0'
+    });
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    do_copy();
+  });
 }
 
 /* ─── DOM shortcuts ───────────────────────────────────────────────── */
@@ -739,22 +799,21 @@ function syncBsSection() {
   $id('bsSection').classList.toggle('hidden', !show);
 }
 
-/* ─── UI: result ──────────────────────────────────────────────────── */
+/* ─── UI: results (all target currencies) ────────────────────────── */
 
 function updateResult() {
   const rawVal = $id('amountInput').value;
-  const raw = parseVeAmount(rawVal);
-  const from = $id('fromCurrency').value;
-  const to   = $id('toCurrency').value;
-  const el   = $id('resultContent');
+  const raw    = parseVeAmount(rawVal);
+  const from   = $id('fromCurrency').value;
+  const el     = $id('resultsWrap');
 
   if (rawVal === '' || isNaN(raw)) {
-    el.innerHTML = `<div class="result-placeholder">Ingresa un monto para ver la conversión</div>`;
+    el.innerHTML = `<div class="res-placeholder">Ingresa un monto para ver la conversión</div>`;
     return;
   }
 
   if (!activeRates) {
-    el.innerHTML = `<div class="result-placeholder">Esperando tasa para la fecha seleccionada…</div>`;
+    el.innerHTML = `<div class="res-placeholder">Esperando tasa para la fecha seleccionada…</div>`;
     return;
   }
 
@@ -767,28 +826,36 @@ function updateResult() {
     if (bsType && bsType.value === 'soberano') amount = amount / 1_000_000;
   }
 
-  const fromLbl = LABELS[from];
-  const toLbl   = LABELS[to];
+  const html = ALL_CURRENCIES
+    .filter(to => to !== from)
+    .map(to => {
+      const result    = convert(amount, from, to, dolar, idi);
+      const info      = CURRENCY_INFO[to];
+      const formatted = result !== null ? fmtVe(result) : '—';
+      const note      = rateSubnote(from, to, dolar, idi);
+      return `
+        <div class="res-row">
+          <div class="res-left">
+            <span class="res-flag">${info.icon}</span>
+            <div>
+              <div><span class="res-name">${info.name}</span><span class="res-code"> ${info.code}</span></div>
+              ${note ? `<div class="res-note">${note}</div>` : ''}
+            </div>
+          </div>
+          <div class="res-right">
+            <span class="res-value">${formatted}</span>
+            ${result !== null
+              ? `<button class="copy-btn" data-val="${formatted}" title="Copiar al portapapeles">${COPY_SVG}</button>`
+              : ''}
+          </div>
+        </div>`;
+    }).join('');
 
-  if (from === to) {
-    el.innerHTML = `
-      <div class="result-from">${fmtVe(raw)} ${fromLbl} equivalen a</div>
-      <div class="result-amount">${fmtVe(amount)} <span class="result-currency">${toLbl}</span></div>
-      <div class="result-note">Sin conversión (misma moneda)</div>`;
-    return;
-  }
+  el.innerHTML = html;
 
-  const result = convert(amount, from, to, dolar, idi);
-  if (result === null) {
-    el.innerHTML = `<div class="result-placeholder">Conversión no disponible</div>`;
-    return;
-  }
-
-  const note = rateNote(from, to, dolar, idi);
-  el.innerHTML = `
-    <div class="result-from">${fmtVe(raw)} ${fromLbl} equivalen a</div>
-    <div class="result-amount">${fmtVe(result)} <span class="result-currency">${toLbl}</span></div>
-    ${note ? `<div class="result-note">${note}</div>` : ''}`;
+  el.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => copyValue(btn.dataset.val, btn));
+  });
 }
 
 /* ─── UI: footer ──────────────────────────────────────────────────── */
@@ -1014,7 +1081,6 @@ async function init() {
     syncBsSection();
     updateResult();
   });
-  $id('toCurrency').addEventListener('change', updateResult);
 
   document.querySelectorAll('input[name="bsType"]').forEach(r => {
     r.addEventListener('change', updateResult);

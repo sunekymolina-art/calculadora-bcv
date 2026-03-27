@@ -475,7 +475,7 @@
     <div class="form-row">
       <div class="form-group">
         <label for="amountInput">Monto</label>
-        <input type="number" id="amountInput" placeholder="0" min="0" step="any">
+        <input type="text" id="amountInput" placeholder="0,00" inputmode="decimal" autocomplete="off">
       </div>
       <div class="form-group">
         <label for="fromCurrency">Moneda de origen</label>
@@ -612,12 +612,40 @@ function fmtVe(num) {
   if (num == null || isNaN(num)) return '—';
   const abs = Math.abs(num);
   let dec = 2;
-  if (abs > 0 && abs < 0.001)      dec = 8;
-  else if (abs > 0 && abs < 0.01)  dec = 6;
-  else if (abs > 0 && abs < 1)     dec = 4;
+  if      (abs > 0 && abs < 0.0001) dec = 8;
+  else if (abs > 0 && abs < 0.001)  dec = 6;
+  else if (abs > 0 && abs < 0.01)   dec = 4;
+  // ≥ 0.01 (including 4,13 / 339.149,50 / 1.000.000,00) → always 2 decimals
   const [intPart, decPart] = num.toFixed(dec).split('.');
   const intFmt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   return decPart ? `${intFmt},${decPart}` : intFmt;
+}
+
+/* Parse a number entered in Venezuelan format (dots=thousands, comma=decimal).
+   Also handles plain integers and dot-as-decimal (e.g. "4.13" → 4.13). */
+function parseVeAmount(str) {
+  if (!str || !str.trim()) return NaN;
+  const s = str.trim();
+  if (s.includes(',')) {
+    // Comma is the decimal separator → remove thousand dots, swap comma
+    return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+  }
+  // No comma: decide whether dots are thousands or decimal
+  const dots = (s.match(/\./g) || []).length;
+  if (dots === 1 && s.split('.')[1].length <= 2) {
+    // Single dot with ≤2 digits after it → decimal (e.g. "4.13")
+    return parseFloat(s);
+  }
+  // Multiple dots or 3-digit groups → thousand separators
+  return parseFloat(s.replace(/\./g, ''));
+}
+
+/* Format a number for display inside the amount input field (always 2 dec). */
+function fmtAmountInput(num) {
+  if (isNaN(num) || num == null) return '';
+  const [intPart, decPart] = num.toFixed(2).split('.');
+  const intFmt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${intFmt},${decPart}`;
 }
 
 function fmtDateStr(str) {
@@ -715,7 +743,7 @@ function syncBsSection() {
 
 function updateResult() {
   const rawVal = $id('amountInput').value;
-  const raw = parseFloat(rawVal);
+  const raw = parseVeAmount(rawVal);
   const from = $id('fromCurrency').value;
   const to   = $id('toCurrency').value;
   const el   = $id('resultContent');
@@ -966,6 +994,21 @@ async function init() {
   });
 
   $id('amountInput').addEventListener('input', updateResult);
+
+  $id('amountInput').addEventListener('blur', () => {
+    const num = parseVeAmount($id('amountInput').value);
+    if (!isNaN(num)) $id('amountInput').value = fmtAmountInput(num);
+  });
+
+  $id('amountInput').addEventListener('focus', () => {
+    // On focus: show raw numeric value for easier editing
+    const num = parseVeAmount($id('amountInput').value);
+    if (!isNaN(num)) $id('amountInput').value = String(num);
+  });
+
+  $id('amountInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') $id('amountInput').blur();
+  });
 
   $id('fromCurrency').addEventListener('change', () => {
     syncBsSection();

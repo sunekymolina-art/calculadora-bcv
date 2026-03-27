@@ -413,6 +413,13 @@
 
     .res-row:hover { border-color: rgba(59,130,246,0.4); }
 
+    .res-row-highlight {
+      background: linear-gradient(135deg, #0e1f12 0%, #0b1a10 100%);
+      border-color: rgba(16,185,129,0.3);
+    }
+    .res-row-highlight:hover { border-color: rgba(16,185,129,0.55); }
+    .res-row-highlight .res-value { color: var(--green); }
+
     .res-left {
       display: flex;
       align-items: center;
@@ -821,12 +828,30 @@ function updateResult() {
 
   // Adjust for Bs soberanos
   let amount = raw;
+  let bsDigitalesRow = '';
   if (from === 'bs') {
     const bsType = document.querySelector('input[name="bsType"]:checked');
-    if (bsType && bsType.value === 'soberano') amount = amount / 1_000_000;
+    if (bsType && bsType.value === 'soberano') {
+      amount = raw / 1_000_000;
+      const fmtDigitales = fmtVe(amount);
+      bsDigitalesRow = `
+        <div class="res-row res-row-highlight">
+          <div class="res-left">
+            <span class="res-flag">🇻🇪</span>
+            <div>
+              <div><span class="res-name">Bs digitales</span><span class="res-code"> Bs</span></div>
+              <div class="res-note">÷ 1.000.000 (conversión soberanos → digitales)</div>
+            </div>
+          </div>
+          <div class="res-right">
+            <span class="res-value">${fmtDigitales}</span>
+            <button class="copy-btn" data-val="${fmtDigitales}" title="Copiar al portapapeles">${COPY_SVG}</button>
+          </div>
+        </div>`;
+    }
   }
 
-  const html = ALL_CURRENCIES
+  const html = bsDigitalesRow + ALL_CURRENCIES
     .filter(to => to !== from)
     .map(to => {
       const result    = convert(amount, from, to, dolar, idi);

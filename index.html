@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora BCV — Tasas de Cambio</title>
+  <style>
+    :root {
+      --bg: #08090f;
+      --surface: #0f1118;
+      --surface2: #181b27;
+      --surface3: #222636;
+      --primary: #3b82f6;
+      --primary-dim: rgba(59,130,246,0.18);
+      --primary-glow: rgba(59,130,246,0.25);
+      --accent: #f59e0b;
+      --green: #10b981;
+      --red: #f87171;
+      --text: #f0f2f8;
+      --text2: #bcc3d4;
+      --text3: #7480a0;
+      --border: #252a3d;
+      --border2: #2e3450;
+      --radius: 14px;
+      --radius-sm: 9px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(180deg, #0b0d16 0%, #0c0f1a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1.1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+    }
+
+    .logo {
+      width: 46px;
+      height: 46px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 60%, #60a5fa 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.45rem;
+      flex-shrink: 0;
+      box-shadow: 0 0 24px rgba(59,130,246,0.35);
+    }
+
+    .logo-text h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .logo-text p {
+      font-size: 0.72rem;
+      color: var(--text3);
+      margin-top: 1px;
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 1.5rem 1rem 0.5rem;
+      max-width: 580px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.25rem 1.1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text3);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Form elements ── */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-group label {
+      font-size: 0.78rem;
+      color: var(--text3);
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.875rem;
+      color: var(--text);
+      font-size: 0.95rem;
+      width: 100%;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    input.has-error {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(248,113,113,0.15);
+    }
+
+    select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%237480a0' d='M5 7L0.67 2h8.66z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      padding-right: 2rem;
+      cursor: pointer;
+    }
+
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { opacity: 1; }
+
+    /* ── Date wrapper ── */
+    .date-wrapper {
+      display: flex;
+      position: relative;
+    }
+
+    .date-wrapper input[type="text"] {
+      border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+      border-right: none;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cal-btn {
+      width: 42px;
+      background: var(--surface3);
+      border: 1px solid var(--border2);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text3);
+      font-size: 1rem;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cal-btn:hover { background: var(--border2); color: var(--primary); }
+
+    .cal-btn input[type="date"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      padding: 0;
+      font-size: 0;
+    }
+
+    /* ── Error message ── */
+    .err-msg {
+      font-size: 0.76rem;
+      color: var(--red);
+      min-height: 1.1em;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* ── Bs type section ── */
+    .bs-section {
+      margin-top: 0.75rem;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 0.7rem 0.875rem;
+    }
+
+    .bs-section-label {
+      font-size: 0.72rem;
+      color: var(--text3);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .radio-opt {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text2);
+      user-select: none;
+    }
+
+    .radio-opt input[type="radio"] {
+      width: auto;
+      accent-color: var(--primary);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Arrow divider ── */
+    .arrow-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text3);
+      font-size: 1rem;
+      padding: 0.75rem 0 0.5rem;
+    }
+
+    /* ── Result card ── */
+    .result-card {
+      background: linear-gradient(135deg, #0d1428 0%, #0c1220 100%);
+      border: 1px solid rgba(59,130,246,0.25);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.25rem;
+      margin-bottom: 0.75rem;
+      text-align: center;
+      min-height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .result-inner { width: 100%; }
+
+    .result-from {
+      font-size: 0.8rem;
+      color: var(--text3);
+      margin-bottom: 0.4rem;
+    }
+
+    .result-amount {
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+
+    .result-currency {
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: var(--text3);
+      margin-left: 0.2rem;
+    }
+
+    .result-note {
+      font-size: 0.78rem;
+      color: var(--text3);
+      margin-top: 0.45rem;
+    }
+
+    .result-placeholder {
+      font-size: 0.92rem;
+      color: var(--text3);
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      display: none;
+      margin-bottom: 0.75rem;
+    }
+    .progress-wrap.visible { display: block; }
+
+    .progress-track {
+      background: var(--surface2);
+      border-radius: 999px;
+      height: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1d4ed8, #3b82f6, #60a5fa, #3b82f6, #1d4ed8);
+      background-size: 200% 100%;
+      border-radius: 999px;
+      animation: progress-slide 1.8s linear infinite;
+    }
+
+    @keyframes progress-slide {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .progress-msg {
+      font-size: 0.8rem;
+      color: var(--text3);
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+    .progress-msg em {
+      color: var(--accent);
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.67rem;
+      font-weight: 700;
+      padding: 0.22rem 0.55rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      vertical-align: middle;
+    }
+
+    .badge-live {
+      background: rgba(16,185,129,0.12);
+      color: var(--green);
+      border: 1px solid rgba(16,185,129,0.28);
+    }
+    .badge-hist {
+      background: rgba(245,158,11,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(245,158,11,0.28);
+    }
+    .badge-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .badge-live .badge-dot {
+      animation: blink 1.6s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+
+    .date-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    /* ── Footer ── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      font-size: 0.76rem;
+      color: var(--text3);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.2rem 0.875rem;
+    }
+
+    .ft-item { display: flex; align-items: center; gap: 0.3rem; }
+    .ft-val  { color: var(--accent); font-weight: 600; }
+    .ft-sep  { color: var(--border2); }
+
+    /* ── Responsive ── */
+    @media (max-width: 460px) {
+      main { padding: 1rem 0.75rem 0.5rem; }
+      .form-row { grid-template-columns: 1fr; }
+      .result-amount { font-size: 2rem; }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">💱</div>
+  <div class="logo-text">
+    <h1>Calculadora BCV</h1>
+    <p>Tasas oficiales del Banco Central de Venezuela</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- Progress bar (shown only during slow history fetches) -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-track"><div class="progress-fill"></div></div>
+    <p class="progress-msg">
+      Buscando tasa histórica para <em id="progressDate"></em>… puede tardar hasta 30 segundos
+    </p>
+  </div>
+
+  <!-- Date card -->
+  <div class="card">
+    <div class="section-label">Fecha de la tasa</div>
+    <div class="date-meta">
+      <div class="form-group" style="flex:1; min-width:0;">
+        <label for="dateText">Fecha (días hábiles) — DD/MM/AAAA</label>
+        <div class="date-wrapper">
+          <input type="text" id="dateText" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="off" inputmode="numeric">
+          <div class="cal-btn" title="Abrir calendario">
+            📅
+            <input type="date" id="datePicker" min="2003-01-01">
+          </div>
+        </div>
+        <div class="err-msg" id="dateError"></div>
+      </div>
+      <div id="badgeWrap" style="align-self:flex-start; padding-top:1.75rem; padding-left:0.5rem;"></div>
+    </div>
+  </div>
+
+  <!-- Conversion card -->
+  <div class="card">
+    <div class="section-label">Conversión</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="amountInput">Monto</label>
+        <input type="number" id="amountInput" placeholder="0" min="0" step="any">
+      </div>
+      <div class="form-group">
+        <label for="fromCurrency">Moneda de origen</label>
+        <select id="fromCurrency">
+          <option value="bs">Bolívares (Bs)</option>
+          <option value="usd">Dólares (USD)</option>
+          <option value="uvc">UVC</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Bs type (only visible when Bs is origin) -->
+    <div class="bs-section hidden" id="bsSection">
+      <div class="bs-section-label">Tipo de bolívares:</div>
+      <div class="radio-group">
+        <label class="radio-opt">
+          <input type="radio" name="bsType" value="digital" checked>
+          Bs digitales (desde oct 2021)
+        </label>
+        <label class="radio-opt">
+          <input type="radio" name="bsType" value="soberano">
+          Bs soberanos (antes oct 2021) — ÷ 1.000.000
+        </label>
+      </div>
+    </div>
+
+    <div class="arrow-divider">↓</div>
+
+    <div class="form-group">
+      <label for="toCurrency">Moneda de destino</label>
+      <select id="toCurrency">
+        <option value="usd">Dólares (USD)</option>
+        <option value="bs">Bolívares (Bs)</option>
+        <option value="uvc">UVC</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Result card -->
+  <div class="result-card" id="resultCard">
+    <div class="result-inner" id="resultContent">
+      <div class="result-placeholder">Ingresa un monto para ver la conversión</div>
+    </div>
+  </div>
+
+</main>
+
+<footer id="footer">
+  <span style="font-style:italic;">Cargando tasas actuales…</span>
+</footer>
+
+<script>
+'use strict';
+
+const API = 'https://bcv-rates-api-production.up.railway.app/api';
+
+/* ─── Venezuelan public holidays (MM-DD) ─────────────────────────── */
+const HOLIDAYS = {
+  '01-01': 'Año Nuevo',
+  '01-06': 'Reyes Magos',
+  '03-19': 'San José',
+  '04-19': 'Declaración de Independencia',
+  '05-01': 'Día del Trabajador',
+  '06-24': 'Batalla de Carabobo',
+  '06-29': 'San Pedro y San Pablo',
+  '07-05': 'Día de la Independencia',
+  '07-24': 'Natalicio de Simón Bolívar',
+  '08-15': 'Asunción de la Virgen',
+  '10-12': 'Día de la Resistencia Indígena',
+  '11-01': 'Todos los Santos',
+  '12-08': 'Inmaculada Concepción',
+  '12-24': 'Nochebuena',
+  '12-25': 'Navidad',
+  '12-31': 'Fin de Año',
+};
+
+/* ─── State ───────────────────────────────────────────────────────── */
+let liveRates    = null;   // {dolar, idi, idi_date, updated_at}
+let activeRates  = null;   // {dolar, idi} used for current calculation
+let activeDate   = null;   // Date object
+let isHistorical = false;
+let abortCtrl    = null;
+
+/* ─── Date helpers ────────────────────────────────────────────────── */
+
+function localToday() {
+  const n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+}
+
+function isWeekend(d) { return d.getDay() === 0 || d.getDay() === 6; }
+
+function holidayName(d) {
+  const key = pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  return HOLIDAYS[key] || null;
+}
+
+function isToday(d) { return d.getTime() === localToday().getTime(); }
+function isFuture(d) { return d > localToday(); }
+
+function lastBizDay() {
+  let d = localToday();
+  while (isWeekend(d) || holidayName(d)) d.setDate(d.getDate() - 1);
+  return d;
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function dateToDisplay(d) { // DD/MM/YYYY
+  return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)}/${d.getFullYear()}`;
+}
+
+function dateToISO(d) { // YYYY-MM-DD
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+
+function dateToAPI(d) { // DD-MM-YYYY
+  return `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`;
+}
+
+function parseDisplay(str) { // DD/MM/YYYY → Date or null
+  const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return null;
+  const [, dd, mm, yyyy] = m.map(Number);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31 || yyyy < 1990 || yyyy > 2100) return null;
+  const d = new Date(yyyy, mm - 1, dd);
+  if (d.getFullYear() !== yyyy || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
+  return d;
+}
+
+/* ─── Number formatting (Venezuelan: dots=thousands, comma=decimal) ─ */
+
+function fmtVe(num) {
+  if (num == null || isNaN(num)) return '—';
+  const abs = Math.abs(num);
+  let dec = 2;
+  if (abs > 0 && abs < 0.001)      dec = 8;
+  else if (abs > 0 && abs < 0.01)  dec = 6;
+  else if (abs > 0 && abs < 1)     dec = 4;
+  const [intPart, decPart] = num.toFixed(dec).split('.');
+  const intFmt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return decPart ? `${intFmt},${decPart}` : intFmt;
+}
+
+function fmtDateStr(str) {
+  if (!str) return '—';
+  try {
+    // Handle ISO or similar
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return str;
+    // Adjust for timezone offset to prevent day-shift on date-only strings
+    const local = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+    const base = new Date(str.length <= 10 ? local : d);
+    return dateToDisplay(str.length <= 10 ? local : d);
+  } catch { return str; }
+}
+
+function fmtDateTime(str) {
+  if (!str) return '—';
+  try {
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return str;
+    return `${dateToDisplay(d)} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  } catch { return str; }
+}
+
+/* ─── Conversion logic ────────────────────────────────────────────── */
+
+const LABELS = { bs: 'Bs', usd: 'USD', uvc: 'UVC' };
+
+function convert(amount, from, to, dolar, idi) {
+  if (from === to) return amount;
+  switch (`${from}→${to}`) {
+    case 'bs→usd':  return amount / dolar;
+    case 'bs→uvc':  return amount / idi;
+    case 'usd→bs':  return amount * dolar;
+    case 'usd→uvc': return (amount * dolar) / idi;
+    case 'uvc→bs':  return amount * idi;
+    case 'uvc→usd': return (amount * idi) / dolar;
+  }
+  return null;
+}
+
+function rateNote(from, to, dolar, idi) {
+  switch (`${from}→${to}`) {
+    case 'bs→usd':  return `1 USD = ${fmtVe(dolar)} Bs`;
+    case 'bs→uvc':  return `1 UVC = ${fmtVe(idi)} Bs`;
+    case 'usd→bs':  return `1 USD = ${fmtVe(dolar)} Bs`;
+    case 'usd→uvc': return `1 USD = ${fmtVe(dolar)} Bs · 1 UVC = ${fmtVe(idi)} Bs`;
+    case 'uvc→bs':  return `1 UVC = ${fmtVe(idi)} Bs`;
+    case 'uvc→usd': return `1 UVC = ${fmtVe(idi)} Bs · 1 USD = ${fmtVe(dolar)} Bs`;
+    default: return '';
+  }
+}
+
+/* ─── DOM shortcuts ───────────────────────────────────────────────── */
+
+const $id = id => document.getElementById(id);
+
+/* ─── UI: progress bar ───────────────────────────────────────────── */
+
+function showProgress(dateStr) {
+  $id('progressDate').textContent = dateStr;
+  $id('progressWrap').classList.add('visible');
+}
+function hideProgress() {
+  $id('progressWrap').classList.remove('visible');
+}
+
+/* ─── UI: date error ──────────────────────────────────────────────── */
+
+function setDateErr(msg) {
+  $id('dateError').innerHTML = msg ? `⚠ ${msg}` : '';
+  $id('dateText').classList.toggle('has-error', !!msg);
+}
+
+/* ─── UI: badge ───────────────────────────────────────────────────── */
+
+function updateBadge() {
+  const w = $id('badgeWrap');
+  if (!activeDate) { w.innerHTML = ''; return; }
+  if (isHistorical) {
+    w.innerHTML = `<span class="badge badge-hist"><span class="badge-dot"></span>Histórica</span>`;
+  } else {
+    w.innerHTML = `<span class="badge badge-live"><span class="badge-dot"></span>En vivo</span>`;
+  }
+}
+
+/* ─── UI: Bs section visibility ──────────────────────────────────── */
+
+function syncBsSection() {
+  const show = $id('fromCurrency').value === 'bs';
+  $id('bsSection').classList.toggle('hidden', !show);
+}
+
+/* ─── UI: result ──────────────────────────────────────────────────── */
+
+function updateResult() {
+  const rawVal = $id('amountInput').value;
+  const raw = parseFloat(rawVal);
+  const from = $id('fromCurrency').value;
+  const to   = $id('toCurrency').value;
+  const el   = $id('resultContent');
+
+  if (rawVal === '' || isNaN(raw)) {
+    el.innerHTML = `<div class="result-placeholder">Ingresa un monto para ver la conversión</div>`;
+    return;
+  }
+
+  if (!activeRates) {
+    el.innerHTML = `<div class="result-placeholder">Esperando tasa para la fecha seleccionada…</div>`;
+    return;
+  }
+
+  const { dolar, idi } = activeRates;
+
+  // Adjust for Bs soberanos
+  let amount = raw;
+  if (from === 'bs') {
+    const bsType = document.querySelector('input[name="bsType"]:checked');
+    if (bsType && bsType.value === 'soberano') amount = amount / 1_000_000;
+  }
+
+  const fromLbl = LABELS[from];
+  const toLbl   = LABELS[to];
+
+  if (from === to) {
+    el.innerHTML = `
+      <div class="result-from">${fmtVe(raw)} ${fromLbl} equivalen a</div>
+      <div class="result-amount">${fmtVe(amount)} <span class="result-currency">${toLbl}</span></div>
+      <div class="result-note">Sin conversión (misma moneda)</div>`;
+    return;
+  }
+
+  const result = convert(amount, from, to, dolar, idi);
+  if (result === null) {
+    el.innerHTML = `<div class="result-placeholder">Conversión no disponible</div>`;
+    return;
+  }
+
+  const note = rateNote(from, to, dolar, idi);
+  el.innerHTML = `
+    <div class="result-from">${fmtVe(raw)} ${fromLbl} equivalen a</div>
+    <div class="result-amount">${fmtVe(result)} <span class="result-currency">${toLbl}</span></div>
+    ${note ? `<div class="result-note">${note}</div>` : ''}`;
+}
+
+/* ─── UI: footer ──────────────────────────────────────────────────── */
+
+function updateFooter() {
+  const f = $id('footer');
+  if (!liveRates) {
+    f.innerHTML = `<span style="font-style:italic;">Cargando tasas actuales…</span>`;
+    return;
+  }
+  const { dolar, idi, idi_date, updated_at } = liveRates;
+  f.innerHTML = `
+    <span class="ft-item">Tasa BCV: <span class="ft-val">${fmtVe(dolar)} Bs/USD</span></span>
+    <span class="ft-sep">|</span>
+    <span class="ft-item">IDI: <span class="ft-val">${fmtVe(idi)}</span>${idi_date ? ` (${fmtDateStr(idi_date)})` : ''}</span>
+    <span class="ft-sep">|</span>
+    <span class="ft-item">Actualizado: ${fmtDateTime(updated_at)}</span>`;
+}
+
+/* ─── API calls ───────────────────────────────────────────────────── */
+
+async function getLiveRates() {
+  const res = await fetch(`${API}/rates`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function getHistoricalRates(apiDateStr) {
+  if (abortCtrl) abortCtrl.abort();
+  abortCtrl = new AbortController();
+  const tid = setTimeout(() => abortCtrl.abort(), 35000);
+  try {
+    const res = await fetch(`${API}/rates/history?from=${apiDateStr}`, { signal: abortCtrl.signal });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  } catch (e) {
+    clearTimeout(tid);
+    throw e;
+  }
+}
+
+/* ─── Select a date and load its rates ───────────────────────────── */
+
+async function selectDate(date) {
+  setDateErr('');
+
+  if (isFuture(date)) {
+    setDateErr('No se pueden consultar fechas futuras.');
+    activeRates = null; updateResult(); return;
+  }
+  if (isWeekend(date)) {
+    const name = date.getDay() === 6 ? 'sábado' : 'domingo';
+    setDateErr(`${dateToDisplay(date)} es ${name}. El BCV no publica tasas los fines de semana.`);
+    activeRates = null; updateResult(); return;
+  }
+  const hol = holidayName(date);
+  if (hol) {
+    setDateErr(`${dateToDisplay(date)} es feriado (${hol}). El BCV no publica tasas en días feriados.`);
+    activeRates = null; updateResult(); return;
+  }
+
+  activeDate = date;
+
+  if (isToday(date)) {
+    isHistorical = false;
+    updateBadge();
+    if (liveRates) {
+      activeRates = { dolar: liveRates.dolar, idi: liveRates.idi };
+    } else {
+      try {
+        const data = await getLiveRates();
+        liveRates = data;
+        activeRates = { dolar: data.dolar, idi: data.idi };
+        updateFooter();
+      } catch {
+        setDateErr('No se pudieron obtener las tasas actuales. Verifica tu conexión.');
+        activeRates = null;
+      }
+    }
+    updateResult();
+    return;
+  }
+
+  // Historical
+  isHistorical = true;
+  updateBadge();
+  const apiStr  = dateToAPI(date);
+  const dispStr = dateToDisplay(date);
+  showProgress(dispStr);
+
+  try {
+    const data = await getHistoricalRates(apiStr);
+    hideProgress();
+
+    const rows = data?.rows;
+    if (!rows || rows.length === 0) {
+      setDateErr('No se encontró tasa para esa fecha.');
+      activeRates = null; updateResult(); return;
+    }
+
+    // Try to find exact date match in rows
+    let row = rows[0];
+    for (const r of rows) {
+      if (!r.fecha) continue;
+      // Normalize separators for comparison
+      const norm = r.fecha.replace(/\//g, '-');
+      if (norm === apiStr) { row = r; break; }
+    }
+
+    const dolar = parseFloat(row.dolar);
+    const idi   = parseFloat(row.idi);
+    if (!dolar && !idi) {
+      setDateErr('La tasa para esa fecha no está disponible.');
+      activeRates = null; updateResult(); return;
+    }
+
+    activeRates = { dolar: dolar || null, idi: idi || null };
+    updateResult();
+
+  } catch (e) {
+    hideProgress();
+    if (e.name === 'AbortError') {
+      setDateErr('La solicitud fue cancelada o tardó demasiado. Intenta nuevamente.');
+    } else {
+      setDateErr('Error al obtener la tasa histórica. Verifica tu conexión.');
+    }
+    activeRates = null;
+    updateResult();
+  }
+}
+
+/* ─── Date text input: auto-format as user types ─────────────────── */
+
+function autoFmtDate(e) {
+  const input = e.target;
+  // Preserve cursor position smartly
+  const prev = input.value;
+  const selStart = input.selectionStart;
+
+  // Strip non-digits
+  const digits = input.value.replace(/\D/g, '').slice(0, 8);
+  let fmt = digits;
+  if (digits.length > 2) fmt = digits.slice(0,2) + '/' + digits.slice(2);
+  if (digits.length > 4) fmt = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+
+  if (fmt !== prev) {
+    input.value = fmt;
+    // Restore cursor, accounting for slash insertion
+    let cur = selStart;
+    if (fmt.length > prev.length && (cur === 3 || cur === 6)) cur++;
+    try { input.setSelectionRange(cur, cur); } catch {}
+  }
+}
+
+function commitDateText() {
+  const val = $id('dateText').value.trim();
+  if (!val || val.length < 10) { setDateErr(''); return; }
+  const date = parseDisplay(val);
+  if (!date) { setDateErr('Formato inválido. Usa DD/MM/AAAA.'); return; }
+  $id('datePicker').value = dateToISO(date);
+  selectDate(date);
+}
+
+/* ─── Init ────────────────────────────────────────────────────────── */
+
+async function init() {
+  // Cap date picker at today
+  const todayDate = localToday();
+  $id('datePicker').max = dateToISO(todayDate);
+
+  // Default to most recent business day
+  const def = lastBizDay();
+  $id('dateText').value   = dateToDisplay(def);
+  $id('datePicker').value = dateToISO(def);
+
+  // Fetch live rates (always useful for footer)
+  try {
+    liveRates = await getLiveRates();
+    updateFooter();
+  } catch {
+    updateFooter();
+  }
+
+  // Load rates for default date
+  await selectDate(def);
+
+  // ── Event listeners ──────────────────────────────────────────────
+
+  $id('dateText').addEventListener('input', autoFmtDate);
+  $id('dateText').addEventListener('blur', commitDateText);
+  $id('dateText').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.target.blur(); }
+  });
+
+  $id('datePicker').addEventListener('change', e => {
+    const v = e.target.value; // YYYY-MM-DD
+    if (!v) return;
+    const [y, m, d] = v.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    $id('dateText').value = dateToDisplay(date);
+    selectDate(date);
+  });
+
+  $id('amountInput').addEventListener('input', updateResult);
+
+  $id('fromCurrency').addEventListener('change', () => {
+    syncBsSection();
+    updateResult();
+  });
+  $id('toCurrency').addEventListener('change', updateResult);
+
+  document.querySelectorAll('input[name="bsType"]').forEach(r => {
+    r.addEventListener('change', updateResult);
+  });
+
+  syncBsSection();
+}
+
+init().catch(console.error);
+</script>
+</body>
+</html>

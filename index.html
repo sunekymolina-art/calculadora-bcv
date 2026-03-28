@@ -536,15 +536,35 @@
       background: linear-gradient(135deg, #0d1428 0%, #0c1220 100%);
       border: 1px solid rgba(59,130,246,0.18);
       border-radius: var(--radius);
-      padding: 0.95rem 1.1rem;
+      padding: 0.95rem 1.1rem 0.75rem;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.75rem;
+      flex-direction: column;
+      gap: 0;
       transition: border-color 0.15s;
     }
 
     .res-row:hover { border-color: rgba(59,130,246,0.4); }
+
+    .res-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .res-rate-line {
+      font-size: 0.69rem;
+      color: var(--text3);
+      margin-top: 0.55rem;
+      padding-top: 0.45rem;
+      border-top: 1px solid var(--border);
+      letter-spacing: 0.01em;
+    }
+
+    .res-rate-line strong {
+      color: var(--text2);
+      font-weight: 600;
+    }
 
     .res-row-highlight {
       background: linear-gradient(135deg, #0e1f12 0%, #0b1a10 100%);
@@ -806,21 +826,16 @@ function fmtVe(num) {
 }
 
 /* Parse a number entered in Venezuelan format (dots=thousands, comma=decimal).
-   Also handles plain integers and dot-as-decimal (e.g. "4.13" → 4.13). */
+   Rule: dots are ALWAYS thousand separators; only a comma introduces decimals.
+   "1.000.000" → 1000000   |   "1.000,50" → 1000.50   |   "4,13" → 4.13 */
 function parseVeAmount(str) {
   if (!str || !str.trim()) return NaN;
   const s = str.trim();
   if (s.includes(',')) {
-    // Comma is the decimal separator → remove thousand dots, swap comma
+    // Comma is the decimal separator → strip thousand dots, swap comma→dot
     return parseFloat(s.replace(/\./g, '').replace(',', '.'));
   }
-  // No comma: decide whether dots are thousands or decimal
-  const dots = (s.match(/\./g) || []).length;
-  if (dots === 1 && s.split('.')[1].length <= 2) {
-    // Single dot with ≤2 digits after it → decimal (e.g. "4.13")
-    return parseFloat(s);
-  }
-  // Multiple dots or 3-digit groups → thousand separators
+  // No comma → dots are thousand separators, strip them
   return parseFloat(s.replace(/\./g, ''));
 }
 
@@ -879,16 +894,11 @@ function convert(amount, from, to, dolar, idi) {
   return null;
 }
 
-function rateSubnote(from, to, dolar, idi) {
-  switch (`${from}→${to}`) {
-    case 'bs→usd':
-    case 'usd→bs':  return `1 USD = ${fmtVe(dolar)} Bs`;
-    case 'bs→uvc':
-    case 'uvc→bs':  return `1 UVC = ${fmtVe(idi)} Bs`;
-    case 'usd→uvc': return `${fmtVe(dolar)} Bs/USD · ${fmtVe(idi)} Bs/UVC`;
-    case 'uvc→usd': return `${fmtVe(idi)} Bs/UVC · ${fmtVe(dolar)} Bs/USD`;
-    default: return '';
-  }
+function rateInfoLine(dolar, idi) {
+  const prefix = isHistorical && activeDate
+    ? `Tasa del <strong>${dateToDisplay(activeDate)}</strong>:`
+    : `Tasa del día:`;
+  return `${prefix} 1 USD = ${fmtVe(dolar)} Bs &nbsp;|&nbsp; IDI: ${fmtVe(idi)}`;
 }
 
 function copyValue(formattedStr, btn) {
@@ -995,28 +1005,31 @@ function updateResult() {
     }
   }
 
+  const rateLine = rateInfoLine(dolar, idi);
+
   const html = bsDigitalesRow + ALL_CURRENCIES
     .filter(to => to !== from)
     .map(to => {
       const result    = convert(amount, from, to, dolar, idi);
       const info      = CURRENCY_INFO[to];
       const formatted = result !== null ? fmtVe(result) : '—';
-      const note      = rateSubnote(from, to, dolar, idi);
       return `
         <div class="res-row">
-          <div class="res-left">
-            <span class="res-flag">${info.icon}</span>
-            <div>
-              <div><span class="res-name">${info.name}</span><span class="res-code"> ${info.code}</span></div>
-              ${note ? `<div class="res-note">${note}</div>` : ''}
+          <div class="res-main">
+            <div class="res-left">
+              <span class="res-flag">${info.icon}</span>
+              <div>
+                <div><span class="res-name">${info.name}</span><span class="res-code"> ${info.code}</span></div>
+              </div>
+            </div>
+            <div class="res-right">
+              <span class="res-value">${formatted}</span>
+              ${result !== null
+                ? `<button class="copy-btn" data-val="${formatted}" title="Copiar al portapapeles">${COPY_SVG}</button>`
+                : ''}
             </div>
           </div>
-          <div class="res-right">
-            <span class="res-value">${formatted}</span>
-            ${result !== null
-              ? `<button class="copy-btn" data-val="${formatted}" title="Copiar al portapapeles">${COPY_SVG}</button>`
-              : ''}
-          </div>
+          <div class="res-rate-line">${rateLine}</div>
         </div>`;
     }).join('');
 

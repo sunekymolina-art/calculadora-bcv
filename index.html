@@ -828,21 +828,15 @@ function fmtVe(num) {
 /* Parse a number entered freely by the user.
    - Comma present → comma is decimal, dots are thousands.
      "1.000,50" → 1000.50  |  "4,13" → 4.13
-   - No comma, single dot with ≤2 digits after → dot is decimal.
-     "4.13" → 4.13  |  "4.5" → 4.5
-   - No comma, any other dot pattern → dots are thousands.
-     "1.000" → 1000  |  "1.000.000" → 1000000  |  "1000" → 1000 */
+   - No comma → dots are ALWAYS thousand separators.
+     "1.000.000" → 1000000  |  "1.000" → 1000  |  "1000" → 1000 */
 function parseVeAmount(str) {
   if (!str || !str.trim()) return NaN;
   const s = str.trim();
   if (s.includes(',')) {
     return parseFloat(s.replace(/\./g, '').replace(',', '.'));
   }
-  const dots = (s.match(/\./g) || []).length;
-  if (dots === 1 && s.split('.')[1].length <= 2) {
-    return parseFloat(s);           // single dot → decimal separator
-  }
-  return parseFloat(s.replace(/\./g, ''));  // dots → thousand separators
+  return parseFloat(s.replace(/\./g, ''));
 }
 
 /* Full-precision Venezuelan format — shows all significant decimals (for IDI). */

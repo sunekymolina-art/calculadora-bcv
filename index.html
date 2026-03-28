@@ -825,18 +825,24 @@ function fmtVe(num) {
   return decPart ? `${intFmt},${decPart}` : intFmt;
 }
 
-/* Parse a number entered in Venezuelan format (dots=thousands, comma=decimal).
-   Rule: dots are ALWAYS thousand separators; only a comma introduces decimals.
-   "1.000.000" → 1000000   |   "1.000,50" → 1000.50   |   "4,13" → 4.13 */
+/* Parse a number entered freely by the user.
+   - Comma present → comma is decimal, dots are thousands.
+     "1.000,50" → 1000.50  |  "4,13" → 4.13
+   - No comma, single dot with ≤2 digits after → dot is decimal.
+     "4.13" → 4.13  |  "4.5" → 4.5
+   - No comma, any other dot pattern → dots are thousands.
+     "1.000" → 1000  |  "1.000.000" → 1000000  |  "1000" → 1000 */
 function parseVeAmount(str) {
   if (!str || !str.trim()) return NaN;
   const s = str.trim();
   if (s.includes(',')) {
-    // Comma is the decimal separator → strip thousand dots, swap comma→dot
     return parseFloat(s.replace(/\./g, '').replace(',', '.'));
   }
-  // No comma → dots are thousand separators, strip them
-  return parseFloat(s.replace(/\./g, ''));
+  const dots = (s.match(/\./g) || []).length;
+  if (dots === 1 && s.split('.')[1].length <= 2) {
+    return parseFloat(s);           // single dot → decimal separator
+  }
+  return parseFloat(s.replace(/\./g, ''));  // dots → thousand separators
 }
 
 /* Full-precision Venezuelan format — shows all significant decimals (for IDI). */
@@ -1415,54 +1421,14 @@ async function init() {
   // Close on outside click
   document.addEventListener('click', () => { if (calOpen) closeCalendar(); });
 
-  $id('amountInput').addEventListener('input', e => {
-    const input  = e.target;
-    const raw    = input.value;
-    const cursor = input.selectionStart;
-
-    // Non-dot chars before cursor lets us restore cursor after dot insertion/removal
-    const nonDotsBefore = raw.slice(0, cursor).replace(/\./g, '').length;
-
-    // Split at first comma (decimal separator)
-    const ci     = raw.indexOf(',');
-    let intRaw   = (ci >= 0 ? raw.slice(0, ci) : raw).replace(/[^\d]/g, '');
-    const suffix = ci >= 0 ? ',' + raw.slice(ci + 1).replace(/\D/g, '') : '';
-
-    // Remove leading zeros (allow single "0")
-    if (intRaw.length > 1) intRaw = intRaw.replace(/^0+/, '') || '0';
-
-    const intFmt   = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    const formatted = intFmt + suffix;
-
-    if (formatted !== raw) {
-      input.value = formatted;
-      // Restore cursor: advance through formatted until we've passed the same
-      // number of non-dot characters as before the edit
-      let count = 0, newCur = formatted.length;
-      for (let i = 0; i < formatted.length; i++) {
-        if (formatted[i] !== '.') count++;
-        if (count === nonDotsBefore) { newCur = i + 1; break; }
-      }
-      try { input.setSelectionRange(newCur, newCur); } catch {}
-    }
-
-    updateResult();
-  });
+  $id('amountInput').addEventListener('input', updateResult);
 
   $id('amountInput').addEventListener('blur', () => {
     const num = parseVeAmount($id('amountInput').value);
     if (!isNaN(num)) $id('amountInput').value = fmtAmountInput(num);
   });
 
-  $id('amountInput').addEventListener('focus', () => {
-    // Remove trailing ",00" so the user can keep typing without having to clear it
-    const v = $id('amountInput').value;
-    if (v.endsWith(',00')) $id('amountInput').value = v.slice(0, -3);
-  });
-
   $id('amountInput').addEventListener('keydown', e => {
-    // Dots are auto-inserted — prevent the user from typing them manually
-    if (e.key === '.' || e.key === 'Decimal') e.preventDefault();
     if (e.key === 'Enter') $id('amountInput').blur();
   });
 

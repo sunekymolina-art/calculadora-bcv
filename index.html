@@ -632,6 +632,96 @@
       color: var(--green);
       border-color: rgba(16,185,129,0.35);
     }
+
+    /* ── History ── */
+    .hist-section { margin-bottom: 1.25rem; }
+
+    .hist-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.65rem;
+    }
+
+    .hist-clear-btn {
+      font-size: 0.72rem;
+      font-family: inherit;
+      color: var(--red);
+      background: transparent;
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 6px;
+      padding: 0.22rem 0.6rem;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .hist-clear-btn:hover { background: rgba(248,113,113,0.1); border-color: var(--red); }
+
+    .hist-empty {
+      text-align: center;
+      color: var(--text3);
+      font-size: 0.85rem;
+      padding: 1.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .hist-entry {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.9rem 1.05rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .hist-entry-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    .hist-query { display: flex; align-items: baseline; gap: 0.4rem; flex-wrap: wrap; }
+    .hist-amount { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .hist-arrow  { color: var(--text3); font-size: 0.8rem; }
+    .hist-rate-date { font-size: 0.75rem; color: var(--text3); }
+
+    .hist-meta { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+    .hist-time { font-size: 0.68rem; color: var(--text3); }
+
+    .hist-reuse-btn {
+      font-size: 0.71rem;
+      font-family: inherit;
+      background: var(--primary-dim);
+      color: var(--primary);
+      border: 1px solid rgba(59,130,246,0.28);
+      border-radius: 6px;
+      padding: 0.2rem 0.55rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .hist-reuse-btn:hover { background: rgba(59,130,246,0.25); border-color: var(--primary); }
+
+    .hist-results {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+    .hist-res-item  { display: flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; }
+    .hist-res-flag  { font-size: 0.95rem; }
+    .hist-res-val   { font-weight: 700; color: var(--text); }
+    .hist-res-code  { color: var(--text3); font-size: 0.68rem; }
+
+    .hist-rate-info {
+      font-size: 0.67rem;
+      color: var(--text3);
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--border);
+    }
   </style>
 </head>
 <body>
@@ -724,6 +814,15 @@
   <div id="resultsWrap">
     <div class="res-placeholder">Ingresa un monto para ver la conversión</div>
   </div>
+
+  <!-- History -->
+  <section class="hist-section" id="histSection">
+    <div class="hist-head">
+      <div class="section-label" style="margin-bottom:0;flex:1;">Historial</div>
+      <button class="hist-clear-btn" id="histClearBtn" type="button">Limpiar historial</button>
+    </div>
+    <div id="histList"></div>
+  </section>
 
 </main>
 
@@ -1049,6 +1148,10 @@ function updateResult() {
   el.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', () => copyValue(btn.dataset.val, btn));
   });
+
+  // Save to history 1 s after the user stops changing values
+  clearTimeout(histTimer);
+  histTimer = setTimeout(saveCurrentToHistory, 1000);
 }
 
 /* ─── UI: footer ──────────────────────────────────────────────────── */
@@ -1179,6 +1282,169 @@ async function selectDate(date) {
     activeRates = null;
     updateResult();
   }
+}
+
+/* ─── History (localStorage) ─────────────────────────────────────── */
+
+const HIST_KEY = 'bcv_history';
+const HIST_MAX = 20;
+let   histTimer = null;
+
+function histLoad() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); }
+  catch { return []; }
+}
+
+function histPersist(entries) {
+  localStorage.setItem(HIST_KEY, JSON.stringify(entries));
+}
+
+function saveCurrentToHistory() {
+  const rawVal = $id('amountInput').value;
+  const raw    = parseVeAmount(rawVal);
+  if (!rawVal || isNaN(raw) || raw <= 0 || !activeRates || !activeDate) return;
+
+  const { dolar, idi } = activeRates;
+  const from     = $id('fromCurrency').value;
+  const bsTypeEl = document.querySelector('input[name="bsType"]:checked');
+  const bsType   = from === 'bs' ? (bsTypeEl?.value ?? 'digital') : null;
+
+  let amount = raw;
+  if (bsType === 'soberano') amount = raw / 1_000_000;
+
+  const results = [];
+  if (bsType === 'soberano') {
+    results.push({ to: 'bs_digital', formatted: fmtVe(amount) });
+  }
+  ALL_CURRENCIES.filter(t => t !== from).forEach(to => {
+    const val = convert(amount, from, to, dolar, idi);
+    if (val !== null) results.push({ to, formatted: fmtVe(val) });
+  });
+
+  const entry = {
+    id:          Date.now(),
+    consultedAt: new Date().toISOString(),
+    rateDate:    dateToDisplay(activeDate),
+    isHistorical,
+    from, bsType,
+    rawAmount:   raw,
+    fmtAmount:   fmtAmountInput(raw),
+    dolar, idi,
+    results,
+  };
+
+  const entries = histLoad();
+
+  // Replace last entry if same query (avoids duplicates while re-typing)
+  if (entries.length > 0) {
+    const last = entries[0];
+    if (last.from === entry.from &&
+        last.bsType === entry.bsType &&
+        last.rateDate === entry.rateDate &&
+        last.rawAmount === entry.rawAmount) {
+      entries[0] = entry;
+      histPersist(entries);
+      renderHistory();
+      return;
+    }
+  }
+
+  entries.unshift(entry);
+  if (entries.length > HIST_MAX) entries.length = HIST_MAX;
+  histPersist(entries);
+  renderHistory();
+}
+
+function fmtConsultedAt(isoStr) {
+  try {
+    const d   = new Date(isoStr);
+    const now = new Date();
+    const time = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    if (d.toDateString() === now.toDateString()) return `Hoy ${time}`;
+    return `${pad2(d.getDate())}/${pad2(d.getMonth()+1)} ${time}`;
+  } catch { return ''; }
+}
+
+function renderHistory() {
+  const entries = histLoad();
+  const list    = $id('histList');
+
+  if (entries.length === 0) {
+    list.innerHTML = `<div class="hist-empty">Aún no hay consultas guardadas</div>`;
+    return;
+  }
+
+  list.innerHTML = entries.map(e => {
+    const fromInfo  = CURRENCY_INFO[e.from] || { icon:'', code: e.from.toUpperCase() };
+    const rateLabel = e.isHistorical ? `Tasa del ${e.rateDate}` : 'Tasa del día';
+    const bsTag     = e.bsType === 'soberano'
+      ? `<span style="font-size:.63rem;color:var(--text3);margin-left:.2rem">(soberanos)</span>`
+      : '';
+
+    const resHtml = e.results.map(r => {
+      const info = r.to === 'bs_digital'
+        ? { icon: '🇻🇪', code: 'Bs digitales' }
+        : (CURRENCY_INFO[r.to] || { icon: '', code: r.to.toUpperCase() });
+      return `<div class="hist-res-item">
+        <span class="hist-res-flag">${info.icon}</span>
+        <span class="hist-res-val">${r.formatted}</span>
+        <span class="hist-res-code">${info.code}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="hist-entry">
+      <div class="hist-entry-head">
+        <div class="hist-query">
+          <span class="hist-amount">${e.fmtAmount} ${fromInfo.code}${bsTag}</span>
+          <span class="hist-arrow">→</span>
+          <span class="hist-rate-date">${rateLabel}</span>
+        </div>
+        <div class="hist-meta">
+          <span class="hist-time">${fmtConsultedAt(e.consultedAt)}</span>
+          <button class="hist-reuse-btn" data-id="${e.id}" type="button">↩ Volver a usar</button>
+        </div>
+      </div>
+      <div class="hist-results">${resHtml}</div>
+      <div class="hist-rate-info">1 USD = ${fmtVe(e.dolar)} Bs &nbsp;|&nbsp; IDI: ${fmtVeFull(e.idi)}</div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.hist-reuse-btn').forEach(btn => {
+    btn.addEventListener('click', () => reuseEntry(+btn.dataset.id));
+  });
+}
+
+async function reuseEntry(id) {
+  const e = histLoad().find(x => x.id === id);
+  if (!e) return;
+
+  $id('fromCurrency').value = e.from;
+  syncBsSection();
+
+  if (e.bsType) {
+    const radio = document.querySelector(`input[name="bsType"][value="${e.bsType}"]`);
+    if (radio) radio.checked = true;
+  }
+
+  $id('amountInput').value = e.fmtAmount;
+
+  const date = parseDisplay(e.rateDate);
+  if (date) {
+    $id('dateText').value = e.rateDate;
+    calYear  = date.getFullYear();
+    calMonth = date.getMonth();
+    await selectDate(date);
+  } else {
+    updateResult();
+  }
+
+  $id('amountInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function clearHistory() {
+  if (!confirm('¿Borrar todo el historial de consultas?')) return;
+  localStorage.removeItem(HIST_KEY);
+  renderHistory();
 }
 
 /* ─── Custom calendar ────────────────────────────────────────────── */
@@ -1436,6 +1702,9 @@ async function init() {
   });
 
   syncBsSection();
+
+  $id('histClearBtn').addEventListener('click', clearHistory);
+  renderHistory();
 }
 
 init().catch(console.error);

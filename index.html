@@ -839,6 +839,17 @@ function parseVeAmount(str) {
   return parseFloat(s.replace(/\./g, ''));
 }
 
+/* Full-precision Venezuelan format — shows all significant decimals (for IDI). */
+function fmtVeFull(num) {
+  if (num == null || isNaN(num)) return '—';
+  let s = num.toString();
+  // Handle scientific notation (very small numbers)
+  if (s.includes('e')) s = num.toFixed(20).replace(/\.?0+$/, '');
+  const [intStr, decStr] = s.split('.');
+  const intFmt = (intStr || '0').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return decStr ? `${intFmt},${decStr}` : intFmt;
+}
+
 /* Format a number for display inside the amount input field (always 2 dec). */
 function fmtAmountInput(num) {
   if (isNaN(num) || num == null) return '';
@@ -898,7 +909,7 @@ function rateInfoLine(dolar, idi) {
   const prefix = isHistorical && activeDate
     ? `Tasa del <strong>${dateToDisplay(activeDate)}</strong>:`
     : `Tasa del día:`;
-  return `${prefix} 1 USD = ${fmtVe(dolar)} Bs &nbsp;|&nbsp; IDI: ${fmtVe(idi)}`;
+  return `${prefix} 1 USD = ${fmtVe(dolar)} Bs &nbsp;|&nbsp; IDI: ${fmtVeFull(idi)}`;
 }
 
 function copyValue(formattedStr, btn) {
@@ -1052,7 +1063,7 @@ function updateFooter() {
   f.innerHTML = `
     <span class="ft-item">Tasa BCV: <span class="ft-val">${fmtVe(dolar)} Bs/USD</span></span>
     <span class="ft-sep">|</span>
-    <span class="ft-item">IDI: <span class="ft-val">${fmtVe(idi)}</span>${idi_date ? ` (${fmtDateStr(idi_date)})` : ''}</span>
+    <span class="ft-item">IDI: <span class="ft-val">${fmtVeFull(idi)}</span>${idi_date ? ` (${fmtDateStr(idi_date)})` : ''}</span>
     <span class="ft-sep">|</span>
     <span class="ft-item">Actualizado: ${fmtDateTime(updated_at)}</span>`;
 }
@@ -1404,7 +1415,39 @@ async function init() {
   // Close on outside click
   document.addEventListener('click', () => { if (calOpen) closeCalendar(); });
 
-  $id('amountInput').addEventListener('input', updateResult);
+  $id('amountInput').addEventListener('input', e => {
+    const input  = e.target;
+    const raw    = input.value;
+    const cursor = input.selectionStart;
+
+    // Non-dot chars before cursor lets us restore cursor after dot insertion/removal
+    const nonDotsBefore = raw.slice(0, cursor).replace(/\./g, '').length;
+
+    // Split at first comma (decimal separator)
+    const ci     = raw.indexOf(',');
+    let intRaw   = (ci >= 0 ? raw.slice(0, ci) : raw).replace(/[^\d]/g, '');
+    const suffix = ci >= 0 ? ',' + raw.slice(ci + 1).replace(/\D/g, '') : '';
+
+    // Remove leading zeros (allow single "0")
+    if (intRaw.length > 1) intRaw = intRaw.replace(/^0+/, '') || '0';
+
+    const intFmt   = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const formatted = intFmt + suffix;
+
+    if (formatted !== raw) {
+      input.value = formatted;
+      // Restore cursor: advance through formatted until we've passed the same
+      // number of non-dot characters as before the edit
+      let count = 0, newCur = formatted.length;
+      for (let i = 0; i < formatted.length; i++) {
+        if (formatted[i] !== '.') count++;
+        if (count === nonDotsBefore) { newCur = i + 1; break; }
+      }
+      try { input.setSelectionRange(newCur, newCur); } catch {}
+    }
+
+    updateResult();
+  });
 
   $id('amountInput').addEventListener('blur', () => {
     const num = parseVeAmount($id('amountInput').value);
@@ -1412,12 +1455,14 @@ async function init() {
   });
 
   $id('amountInput').addEventListener('focus', () => {
-    // On focus: show raw numeric value for easier editing
-    const num = parseVeAmount($id('amountInput').value);
-    if (!isNaN(num)) $id('amountInput').value = String(num);
+    // Remove trailing ",00" so the user can keep typing without having to clear it
+    const v = $id('amountInput').value;
+    if (v.endsWith(',00')) $id('amountInput').value = v.slice(0, -3);
   });
 
   $id('amountInput').addEventListener('keydown', e => {
+    // Dots are auto-inserted — prevent the user from typing them manually
+    if (e.key === '.' || e.key === 'Decimal') e.preventDefault();
     if (e.key === 'Enter') $id('amountInput').blur();
   });
 

@@ -925,17 +925,36 @@ function fmtVe(num) {
 }
 
 /* Parse a number entered freely by the user.
-   - Comma present → comma is decimal, dots are thousands.
-     "1.000,50" → 1000.50  |  "4,13" → 4.13
-   - No comma → dots are ALWAYS thousand separators.
-     "1.000.000" → 1000000  |  "1.000" → 1000  |  "1000" → 1000 */
-function parseVeAmount(str) {
-  if (!str || !str.trim()) return NaN;
-  const s = str.trim();
-  if (s.includes(',')) {
-    return parseFloat(s.replace(/\./g, '').replace(',', '.'));
+   Rules (unambiguous, separator-agnostic):
+   · Both dot AND comma present → the LAST one is decimal, the other is thousands.
+       "1.000,50" → 1000.50   "1,000.50" → 1000.50
+   · Only dots → LAST dot is decimal UNLESS the last segment is exactly 3 digits
+     (in that case all dots are thousands separators, no decimal part).
+       "1000.50" → 1000.50   "1.5" → 1.5   "1.000" → 1000   "1.000.000" → 1000000
+   · Only commas → same rule, symmetric.
+       "1000,50" → 1000.50   "1,000,000" → 1000000
+   · No separator → integer.
+       "1000000" → 1000000 */
+       function parseVeAmount(str) {
+  if (!str) return NaN;
+  str = str.trim();
+  const lastComma = str.lastIndexOf(',');
+  const lastDot = str.lastIndexOf('.');
+  let clean;
+  if (lastComma > lastDot) {
+    // coma es decimal: "1.000,50"
+    clean = str.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot > lastComma) {
+    // punto es decimal: "1000.50" o "1,000.50"
+    clean = str.replace(/,/g, '').replace(/\./g, (m, offset, s) => {
+      // si es el último punto, es decimal
+      return offset === s.lastIndexOf('.') ? '.' : '';
+    });
+  } else {
+    // solo dígitos
+    clean = str.replace(/[.,]/g, '');
   }
-  return parseFloat(s.replace(/\./g, ''));
+  return parseFloat(clean);
 }
 
 /* Full-precision Venezuelan format — shows all significant decimals (for IDI). */
@@ -1689,7 +1708,7 @@ async function init() {
   });
 
   $id('amountInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') $id('amountInput').blur();
+    if (e.key === 'Enter') updateResult();
   });
 
   $id('fromCurrency').addEventListener('change', () => {

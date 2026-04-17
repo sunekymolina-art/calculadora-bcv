@@ -81,6 +81,30 @@
       width: 100%;
     }
 
+    @media (min-width: 860px) {
+      body { overflow-x: hidden; }
+      main {
+        max-width: 1100px;
+        display: grid;
+        grid-template-columns: 55fr 45fr;
+        gap: 0 1.5rem;
+        align-items: start;
+        padding: 1.5rem 1.5rem 0.5rem;
+      }
+      .col-left  { grid-column: 1; min-width: 0; }
+      .col-right {
+        grid-column: 2;
+        min-width: 0;
+        position: sticky;
+        top: 1rem;
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border2) transparent;
+      }
+      .col-hist  { grid-column: 1; min-width: 0; }
+    }
+
     /* ── Cards ── */
     .card {
       background: var(--surface);
@@ -722,6 +746,167 @@
       padding-top: 0.4rem;
       border-top: 1px solid var(--border);
     }
+
+    /* ── Add-to-accumulator button ── */
+    .add-btn {
+      width: 30px;
+      height: 30px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text3);
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .add-btn:hover {
+      background: rgba(16,185,129,0.12);
+      color: var(--green);
+      border-color: rgba(16,185,129,0.35);
+    }
+
+    .sub-btn {
+      width: 30px;
+      height: 30px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text3);
+      font-size: 1.35rem;
+      font-weight: 700;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+    .sub-btn:hover {
+      background: rgba(248,113,113,0.12);
+      color: var(--red);
+      border-color: rgba(248,113,113,0.35);
+    }
+
+    .accum-row-neg td:nth-child(2),
+    .accum-row-neg td:nth-child(3),
+    .accum-row-neg td:nth-child(4),
+    .accum-row-neg td:nth-child(5) { color: var(--red); }
+
+    /* ── Accumulator panel ── */
+    .accum-panel {
+      background: var(--surface);
+      border: 1px solid rgba(16,185,129,0.25);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      margin-bottom: 0.75rem;
+    }
+    .accum-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .accum-clear-btn {
+      font-size: 0.72rem;
+      font-family: inherit;
+      color: var(--red);
+      background: transparent;
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: 6px;
+      padding: 0.22rem 0.6rem;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .accum-clear-btn:hover { background: rgba(248,113,113,0.1); border-color: var(--red); }
+    .accum-err {
+      font-size: 0.75rem;
+      color: var(--red);
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.65rem;
+    }
+
+    /* ── Accumulator table ── */
+    .accum-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .accum-table thead th {
+      font-size: 0.62rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text3);
+      padding: 0 0.4rem 0.5rem;
+      text-align: right;
+      border-bottom: 1px solid var(--border2);
+    }
+    .accum-table thead th:first-child  { text-align: center; width: 1.8rem; }
+    .accum-table thead th:nth-child(2) { text-align: left; }
+    .accum-table thead th:last-child   { width: 1.8rem; }
+
+    .accum-table tbody tr {
+      border-bottom: 1px solid var(--border);
+    }
+    .accum-table tbody tr:last-child { border-bottom: none; }
+    .accum-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+    .accum-table td {
+      padding: 0.45rem 0.4rem;
+      text-align: right;
+      color: var(--text2);
+      font-variant-numeric: tabular-nums;
+    }
+    .accum-table td:first-child  { text-align: center; color: var(--text3); font-size: 0.7rem; }
+    .accum-table td:nth-child(2) { text-align: left; font-weight: 600; color: var(--text); }
+    .accum-table td:last-child   { padding-left: 0.2rem; }
+
+    .accum-table tfoot tr {
+      border-top: 2px solid var(--border2);
+    }
+    .accum-table tfoot td {
+      padding: 0.5rem 0.4rem;
+      text-align: right;
+      font-weight: 700;
+      color: var(--green);
+      font-size: 0.88rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .accum-table tfoot td:first-child  { text-align: left; color: var(--text3); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .accum-table tfoot td:last-child   { padding-left: 0.2rem; }
+
+    .accum-orig-code { font-size: 0.68rem; color: var(--text3); font-weight: 400; margin-left: 0.2rem; }
+
+    .accum-del-btn {
+      width: 22px;
+      height: 22px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text3);
+      font-size: 0.95rem;
+      line-height: 1;
+      transition: background 0.1s, color 0.1s, border-color 0.1s;
+    }
+    .accum-del-btn:hover {
+      background: rgba(248,113,113,0.12);
+      color: var(--red);
+      border-color: rgba(248,113,113,0.3);
+    }
   </style>
 </head>
 <body>
@@ -735,6 +920,8 @@
 </header>
 
 <main>
+
+  <div class="col-left">
 
   <!-- Progress bar (shown only during slow history fetches) -->
   <div class="progress-wrap" id="progressWrap">
@@ -808,6 +995,7 @@
       </div>
     </div>
 
+
   </div>
 
   <!-- Results: one row per target currency -->
@@ -815,7 +1003,22 @@
     <div class="res-placeholder">Ingresa un monto para ver la conversión</div>
   </div>
 
-  <!-- History -->
+  </div><!-- /.col-left (date + form + results) -->
+
+  <!-- Right column: accumulator (desktop); inline after results (mobile) -->
+  <div class="col-right">
+    <div id="accumPanel" class="accum-panel hidden">
+      <div class="accum-head">
+        <div class="section-label" style="margin-bottom:0;flex:1;">Total acumulado</div>
+        <button class="accum-clear-btn" id="accumClearBtn" type="button">Limpiar total</button>
+      </div>
+      <div id="accumErrMsg" class="accum-err hidden"></div>
+      <div id="accumRows"></div>
+    </div>
+  </div><!-- /.col-right -->
+
+  <!-- History — always below, spans both columns on desktop -->
+  <div class="col-hist">
   <section class="hist-section" id="histSection">
     <div class="hist-head">
       <div class="section-label" style="margin-bottom:0;flex:1;">Historial</div>
@@ -823,6 +1026,7 @@
     </div>
     <div id="histList"></div>
   </section>
+  </div><!-- /.col-hist -->
 
 </main>
 
@@ -861,6 +1065,9 @@ let activeRates  = null;   // {dolar, idi} used for current calculation
 let activeDate   = null;   // Date object
 let isHistorical = false;
 let abortCtrl    = null;
+let accumEntries  = [];   // [{id, amount, currency, bs, usd, uvc}]
+let accumNextId   = 1;
+let accumErrTimer = null;
 
 /* ─── Date helpers ────────────────────────────────────────────────── */
 
@@ -1156,6 +1363,8 @@ function updateResult() {
               ${result !== null
                 ? `<button class="copy-btn" data-val="${formatted}" title="Copiar al portapapeles">${COPY_SVG}</button>`
                 : ''}
+              <button class="add-btn" data-amount="${amount}" title="Sumar al acumulado">+</button>
+              <button class="sub-btn" data-amount="${amount}" title="Restar del acumulado">−</button>
             </div>
           </div>
           <div class="res-rate-line">${rateLine}</div>
@@ -1167,6 +1376,22 @@ function updateResult() {
   el.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', () => copyValue(btn.dataset.val, btn));
   });
+
+  el.querySelectorAll('.add-btn, .sub-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const op      = btn.classList.contains('sub-btn') ? 'resta' : 'suma';
+      const monto   = Math.abs(+btn.dataset.amount);
+      const prevLen = accumEntries.length;
+      addToAccumulator(monto, op);
+      if (accumEntries.length > prevLen) {
+        $id('amountInput').value = '';
+        updateResult();
+        $id('amountInput').focus();
+      }
+    });
+  });
+
+  updateAccumulatorPanel();
 
   // Save to history 1 s after the user stops changing values
   clearTimeout(histTimer);
@@ -1301,6 +1526,115 @@ async function selectDate(date) {
     activeRates = null;
     updateResult();
   }
+}
+
+/* ─── Accumulator ─────────────────────────────────────────────────── */
+// Cada entrada: { id, monto, moneda, operacion }
+// monto: SIEMPRE positivo. operacion: 'suma' | 'resta'.
+
+function addToAccumulator(monto, operacion) {
+  const m = Math.abs(monto);
+  if (!m || isNaN(m)) return;
+  const moneda = $id('fromCurrency').value;
+  if (accumEntries.length === 0) operacion = 'suma';
+  if (accumEntries.length > 0 && accumEntries[0].moneda !== moneda) {
+    showAccumError('El acumulador solo permite una moneda a la vez. Limpiá el total para cambiar de moneda.');
+    return;
+  }
+  if (!activeRates) return;
+  accumEntries.push({ id: accumNextId++, monto: m, moneda, operacion });
+  renderAccumulatorPanel();
+}
+
+function removeAccumEntry(id) {
+  accumEntries = accumEntries.filter(e => e.id !== id);
+  renderAccumulatorPanel();
+}
+
+function clearAccumulator() {
+  accumEntries = [];
+  $id('accumErrMsg').classList.add('hidden');
+  renderAccumulatorPanel();
+}
+
+function showAccumError(msg) {
+  const el = $id('accumErrMsg');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  clearTimeout(accumErrTimer);
+  accumErrTimer = setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+function renderAccumulatorPanel() {
+  const panel = $id('accumPanel');
+  if (accumEntries.length === 0) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+
+  if (!activeRates) {
+    $id('accumRows').innerHTML = '<div style="color:var(--text3);font-size:0.82rem;padding:0.4rem 0;">Esperando tasa…</div>';
+    return;
+  }
+
+  const { dolar, idi } = activeRates;
+  const moneda = accumEntries[0].moneda;
+
+  // 1. Calcular total en la moneda base
+  let totalBase = 0;
+  for (const e of accumEntries) {
+    if (e.operacion === 'suma')  totalBase += e.monto;
+    if (e.operacion === 'resta') totalBase -= e.monto;
+  }
+
+  // 2. Convertir el total a las tres monedas
+  const totBs  = moneda === 'bs'  ? totalBase : convert(totalBase, moneda, 'bs',  dolar, idi);
+  const totUsd = moneda === 'usd' ? totalBase : convert(totalBase, moneda, 'usd', dolar, idi);
+  const totUvc = moneda === 'uvc' ? totalBase : convert(totalBase, moneda, 'uvc', dolar, idi);
+
+  const negStyle = v => v < 0 ? ' style="color:var(--red)"' : '';
+  const codeLbl  = CURRENCY_INFO[moneda]?.code ?? moneda.toUpperCase();
+
+  // 3. Filas — monto siempre positivo, prefijo visual según operacion
+  const rows = accumEntries.map((e, i) => {
+    const isResta = e.operacion === 'resta';
+    const bs  = moneda === 'bs'  ? e.monto : Math.abs(convert(e.monto, moneda, 'bs',  dolar, idi) ?? 0);
+    const usd = moneda === 'usd' ? e.monto : Math.abs(convert(e.monto, moneda, 'usd', dolar, idi) ?? 0);
+    const uvc = moneda === 'uvc' ? e.monto : Math.abs(convert(e.monto, moneda, 'uvc', dolar, idi) ?? 0);
+    return `
+    <tr${isResta ? ' class="accum-row-neg"' : ''}>
+      <td>${i + 1}</td>
+      <td>${fmtVe(e.monto)}<span class="accum-orig-code">${codeLbl}</span></td>
+      <td>${fmtVe(bs)}</td>
+      <td>${fmtVe(usd)}</td>
+      <td>${fmtVe(uvc)}</td>
+      <td><button class="accum-del-btn" data-id="${e.id}" title="Eliminar fila">×</button></td>
+    </tr>`;
+  }).join('');
+
+  $id('accumRows').innerHTML = `
+    <table class="accum-table">
+      <thead>
+        <tr><th>#</th><th>Monto original</th><th>Bs</th><th>USD</th><th>UVC</th><th></th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">Total</td>
+          <td${negStyle(totBs)}>${fmtVe(totBs)}</td>
+          <td${negStyle(totUsd)}>${fmtVe(totUsd)}</td>
+          <td${negStyle(totUvc)}>${fmtVe(totUvc)}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>`;
+
+  $id('accumRows').querySelectorAll('.accum-del-btn').forEach(btn => {
+    btn.addEventListener('click', () => removeAccumEntry(+btn.dataset.id));
+  });
+}
+
+function updateAccumulatorPanel() {
+  // Las conversiones se calculan en render time — solo re-renderizar.
+  renderAccumulatorPanel();
 }
 
 /* ─── History (localStorage) ─────────────────────────────────────── */
@@ -1709,6 +2043,23 @@ async function init() {
 
   $id('amountInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') updateResult();
+    if (e.key === '+' || e.key === '-') {
+      e.preventDefault();
+      const rawVal   = $id('amountInput').value;
+      const from     = $id('fromCurrency').value;
+      const bsTypeEl = document.querySelector('input[name="bsType"]:checked');
+      let monto      = Math.abs(parseVeAmount(rawVal));
+      if (!monto || isNaN(monto)) return;
+      if (from === 'bs' && bsTypeEl?.value === 'soberano') monto = monto / 1_000_000;
+      const op      = e.key === '-' ? 'resta' : 'suma';
+      const prevLen = accumEntries.length;
+      addToAccumulator(monto, op);
+      if (accumEntries.length > prevLen) {
+        $id('amountInput').value = '';
+        updateResult();
+        $id('amountInput').focus();
+      }
+    }
   });
 
   $id('fromCurrency').addEventListener('change', () => {
@@ -1723,6 +2074,7 @@ async function init() {
   syncBsSection();
 
   $id('histClearBtn').addEventListener('click', clearHistory);
+  $id('accumClearBtn').addEventListener('click', clearAccumulator);
   renderHistory();
 }
 

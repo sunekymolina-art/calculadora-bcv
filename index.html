@@ -1071,9 +1071,18 @@ let accumErrTimer = null;
 
 /* ─── Date helpers ────────────────────────────────────────────────── */
 
+function getVenezuelaDate() {
+  const now = new Date();
+  const vzTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Caracas' }));
+  const dd = String(vzTime.getDate()).padStart(2, '0');
+  const mm = String(vzTime.getMonth() + 1).padStart(2, '0');
+  const yyyy = vzTime.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+}
+
 function localToday() {
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  const vzTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Caracas' }));
+  return new Date(vzTime.getFullYear(), vzTime.getMonth(), vzTime.getDate());
 }
 
 function isWeekend(d) { return d.getDay() === 0 || d.getDay() === 6; }
@@ -1972,8 +1981,11 @@ function commitDateText() {
 /* ─── Init ────────────────────────────────────────────────────────── */
 
 async function init() {
-  // Default to most recent business day
-  const def = lastBizDay();
+  // Default to most recent business day in Venezuela time (UTC-4)
+  const vzDateStr = getVenezuelaDate();            // DD-MM-YYYY
+  const [dd, mm, yyyy] = vzDateStr.split('-').map(Number);
+  let def = new Date(yyyy, mm - 1, dd);
+  while (isWeekend(def) || holidayName(def)) def.setDate(def.getDate() - 1);
   $id('dateText').value = dateToDisplay(def);
 
   // Fetch live rates (always useful for footer)

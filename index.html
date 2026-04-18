@@ -1243,9 +1243,18 @@ function convert(amount, from, to, dolar, idi) {
   return null;
 }
 
+function rateDateFromTimestamp(isoStr) {
+  if (!isoStr) return null;
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return null;
+  const vzDate = new Date(d.toLocaleString('en-US', { timeZone: 'America/Caracas' }));
+  return dateToDisplay(vzDate);
+}
+
 function rateInfoLine(dolar, idi) {
-  const prefix = isHistorical && activeDate
-    ? `Tasa del <strong>${dateToDisplay(activeDate)}</strong>:`
+  const fecha = activeRates?.fecha;
+  const prefix = fecha
+    ? `Tasa del <strong>${fecha}</strong>:`
     : `Tasa del día:`;
   return `${prefix} 1 USD = ${fmtVeFull(dolar)} Bs &nbsp;|&nbsp; IDI: ${fmtVeFull(idi)}`;
 }
@@ -1419,9 +1428,9 @@ function updateFooter() {
     f.innerHTML = `<span style="font-style:italic;">Cargando tasas actuales…</span>`;
     return;
   }
-  const { dolar, idi, idi_date, updated_at } = liveRates;
+  const { dolar, dolar_date, idi, idi_date, updated_at } = liveRates;
   f.innerHTML = `
-    <span class="ft-item">Tasa BCV: <span class="ft-val">${fmtVeFull(dolar)} Bs/USD</span></span>
+    <span class="ft-item">Tasa BCV: <span class="ft-val">${fmtVeFull(dolar)} Bs/USD</span>${dolar_date ? ` (${fmtDateStr(dolar_date)})` : ''}</span>
     <span class="ft-sep">|</span>
     <span class="ft-item">IDI: <span class="ft-val">${fmtVeFull(idi)}</span>${idi_date ? ` (${fmtDateStr(idi_date)})` : ''}</span>
     <span class="ft-sep">|</span>
@@ -1477,12 +1486,12 @@ async function selectDate(date) {
     isHistorical = false;
     updateBadge();
     if (liveRates) {
-      activeRates = { dolar: liveRates.dolar, idi: liveRates.idi };
+      activeRates = { dolar: liveRates.dolar, idi: liveRates.idi, fecha: rateDateFromTimestamp(liveRates.updated_at) };
     } else {
       try {
         const data = await getLiveRates();
         liveRates = data;
-        activeRates = { dolar: data.dolar, idi: data.idi };
+        activeRates = { dolar: data.dolar, idi: data.idi, fecha: rateDateFromTimestamp(data.updated_at) };
         updateFooter();
       } catch {
         setDateErr('No se pudieron obtener las tasas actuales. Verifica tu conexión.');
@@ -1526,7 +1535,7 @@ async function selectDate(date) {
       activeRates = null; updateResult(); return;
     }
 
-    activeRates = { dolar: dolar || null, idi: idi || null };
+    activeRates = { dolar: dolar || null, idi: idi || null, fecha: dateToDisplay(activeDate) };
     updateResult();
 
   } catch (e) {

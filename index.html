@@ -1257,6 +1257,11 @@ function rateDateFromTimestamp(isoStr) {
   return dateToDisplay(vzDate);
 }
 
+function truncEuro(v) {
+  if (v == null || isNaN(v)) return null;
+  return Math.trunc(v * 10000) / 10000;
+}
+
 function rateInfoLine(dolar, idi, euro) {
   const fecha = activeRates?.fecha ?? '';
   const euroPart = euro != null ? ` · EUR ${fmtVeFull(euro)}` : '';
@@ -1492,12 +1497,12 @@ async function selectDate(date) {
     isHistorical = false;
     updateBadge();
     if (liveRates) {
-      activeRates = { dolar: liveRates.dolar, idi: liveRates.idi, euro: liveRates.euro ?? null, fecha: rateDateFromTimestamp(liveRates.updated_at) };
+      activeRates = { dolar: liveRates.dolar, idi: liveRates.idi, euro: truncEuro(liveRates.euro), fecha: rateDateFromTimestamp(liveRates.updated_at) };
     } else {
       try {
         const data = await getLiveRates();
         liveRates = data;
-        activeRates = { dolar: data.dolar, idi: data.idi, euro: data.euro ?? null, fecha: rateDateFromTimestamp(data.updated_at) };
+        activeRates = { dolar: data.dolar, idi: data.idi, euro: truncEuro(data.euro), fecha: rateDateFromTimestamp(data.updated_at) };
         updateFooter();
       } catch {
         setDateErr('No se pudieron obtener las tasas actuales. Verifica tu conexión.');
@@ -1542,7 +1547,7 @@ async function selectDate(date) {
     }
 
     const euroVal = row.euro ? parseFloat(row.euro) : null;
-    activeRates = { dolar: dolar || null, idi: idi || null, euro: euroVal, fecha: dateToDisplay(activeDate) };
+    activeRates = { dolar: dolar || null, idi: idi || null, euro: truncEuro(euroVal), fecha: dateToDisplay(activeDate) };
     updateResult();
 
   } catch (e) {

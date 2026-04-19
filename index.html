@@ -577,17 +577,14 @@
     }
 
     .res-rate-line {
-      font-size: 0.69rem;
+      font-size: 11px;
       color: var(--text3);
       margin-top: 0.55rem;
       padding-top: 0.45rem;
       border-top: 1px solid var(--border);
-      letter-spacing: 0.01em;
-    }
-
-    .res-rate-line strong {
-      color: var(--text2);
-      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .res-row-highlight {
@@ -856,7 +853,8 @@
     .accum-table thead th:nth-child(2) { text-align: left; min-width: 5rem; }
     .accum-table thead th:nth-child(3),
     .accum-table thead th:nth-child(4),
-    .accum-table thead th:nth-child(5) { min-width: 5.5rem; }
+    .accum-table thead th:nth-child(5),
+    .accum-table thead th:nth-child(6) { min-width: 5.5rem; }
     .accum-table thead th:last-child   { width: 1.6rem; }
 
     .accum-table tbody tr {
@@ -979,6 +977,7 @@
         <select id="fromCurrency">
           <option value="bs">Bolívares (Bs)</option>
           <option value="usd">Dólares (USD)</option>
+          <option value="eur">Euro (EUR)</option>
           <option value="uvc">UVC</option>
         </select>
       </div>
@@ -1223,22 +1222,29 @@ function fmtDateTime(str) {
 const CURRENCY_INFO = {
   bs:  { name: 'Bolívares', code: 'Bs',  icon: '🇻🇪' },
   usd: { name: 'Dólares',   code: 'USD', icon: '🇺🇸' },
+  eur: { name: 'Euro',      code: 'EUR', icon: '🇪🇺' },
   uvc: { name: 'UVC',       code: 'UVC', icon: '📊'  },
 };
-const ALL_CURRENCIES = ['bs', 'usd', 'uvc'];
+const ALL_CURRENCIES = ['bs', 'usd', 'eur', 'uvc'];
 
 const COPY_SVG  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 const CHECK_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 
-function convert(amount, from, to, dolar, idi) {
+function convert(amount, from, to, dolar, idi, euro) {
   if (from === to) return amount;
   switch (`${from}→${to}`) {
     case 'bs→usd':  return amount / dolar;
+    case 'bs→eur':  return euro ? amount / euro : null;
     case 'bs→uvc':  return amount / idi;
     case 'usd→bs':  return amount * dolar;
+    case 'usd→eur': return euro ? (amount * dolar) / euro : null;
     case 'usd→uvc': return (amount * dolar) / idi;
+    case 'eur→bs':  return euro ? amount * euro : null;
+    case 'eur→usd': return euro ? (amount * euro) / dolar : null;
+    case 'eur→uvc': return euro ? (amount * euro) / idi : null;
     case 'uvc→bs':  return amount * idi;
     case 'uvc→usd': return (amount * idi) / dolar;
+    case 'uvc→eur': return euro ? (amount * idi) / euro : null;
   }
   return null;
 }
@@ -1251,12 +1257,10 @@ function rateDateFromTimestamp(isoStr) {
   return dateToDisplay(vzDate);
 }
 
-function rateInfoLine(dolar, idi) {
-  const fecha = activeRates?.fecha;
-  const prefix = fecha
-    ? `Tasa del <strong>${fecha}</strong>:`
-    : `Tasa del día:`;
-  return `${prefix} 1 USD = ${fmtVeFull(dolar)} Bs &nbsp;|&nbsp; IDI: ${fmtVeFull(idi)}`;
+function rateInfoLine(dolar, idi, euro) {
+  const fecha = activeRates?.fecha ?? '';
+  const euroPart = euro != null ? ` · EUR ${fmtVeFull(euro)}` : '';
+  return `${fecha} · USD ${fmtVeFull(dolar)}${euroPart} · IDI ${fmtVeFull(idi)}`;
 }
 
 function copyValue(formattedStr, btn) {
@@ -1318,6 +1322,7 @@ function syncBsSection() {
   $id('bsSection').classList.toggle('hidden', !show);
 }
 
+
 /* ─── UI: results (all target currencies) ────────────────────────── */
 
 function updateResult() {
@@ -1336,7 +1341,7 @@ function updateResult() {
     return;
   }
 
-  const { dolar, idi } = activeRates;
+  const { dolar, idi, euro } = activeRates;
 
   // Adjust for Bs soberanos
   let amount = raw;
@@ -1363,12 +1368,12 @@ function updateResult() {
     }
   }
 
-  const rateLine = rateInfoLine(dolar, idi);
+  const rateLine = rateInfoLine(dolar, idi, euro);
 
   const html = bsDigitalesRow + ALL_CURRENCIES
     .filter(to => to !== from)
     .map(to => {
-      const result    = convert(amount, from, to, dolar, idi);
+      const result    = convert(amount, from, to, dolar, idi, euro);
       const info      = CURRENCY_INFO[to];
       const formatted = result !== null ? fmtVe(result) : '—';
       return `
@@ -1428,12 +1433,13 @@ function updateFooter() {
     f.innerHTML = `<span style="font-style:italic;">Cargando tasas actuales…</span>`;
     return;
   }
-  const { dolar, dolar_date, idi, idi_date, updated_at } = liveRates;
+  const { dolar, dolar_date, idi, idi_date, euro, euro_date, updated_at } = liveRates;
   f.innerHTML = `
     <span class="ft-item">Tasa BCV: <span class="ft-val">${fmtVeFull(dolar)} Bs/USD</span>${dolar_date ? ` (${fmtDateStr(dolar_date)})` : ''}</span>
     <span class="ft-sep">|</span>
     <span class="ft-item">IDI: <span class="ft-val">${fmtVeFull(idi)}</span>${idi_date ? ` (${fmtDateStr(idi_date)})` : ''}</span>
     <span class="ft-sep">|</span>
+    ${euro != null ? `<span class="ft-item">Euro BCV: <span class="ft-val">${fmtVeFull(euro)} Bs/EUR</span>${euro_date ? ` (${fmtDateStr(euro_date)})` : ''}</span><span class="ft-sep">|</span>` : ''}
     <span class="ft-item">Actualizado: ${fmtDateTime(updated_at)}</span>`;
 }
 
@@ -1486,12 +1492,12 @@ async function selectDate(date) {
     isHistorical = false;
     updateBadge();
     if (liveRates) {
-      activeRates = { dolar: liveRates.dolar, idi: liveRates.idi, fecha: rateDateFromTimestamp(liveRates.updated_at) };
+      activeRates = { dolar: liveRates.dolar, idi: liveRates.idi, euro: liveRates.euro ?? null, fecha: rateDateFromTimestamp(liveRates.updated_at) };
     } else {
       try {
         const data = await getLiveRates();
         liveRates = data;
-        activeRates = { dolar: data.dolar, idi: data.idi, fecha: rateDateFromTimestamp(data.updated_at) };
+        activeRates = { dolar: data.dolar, idi: data.idi, euro: data.euro ?? null, fecha: rateDateFromTimestamp(data.updated_at) };
         updateFooter();
       } catch {
         setDateErr('No se pudieron obtener las tasas actuales. Verifica tu conexión.');
@@ -1535,7 +1541,8 @@ async function selectDate(date) {
       activeRates = null; updateResult(); return;
     }
 
-    activeRates = { dolar: dolar || null, idi: idi || null, fecha: dateToDisplay(activeDate) };
+    const euroVal = row.euro ? parseFloat(row.euro) : null;
+    activeRates = { dolar: dolar || null, idi: idi || null, euro: euroVal, fecha: dateToDisplay(activeDate) };
     updateResult();
 
   } catch (e) {
@@ -1597,7 +1604,7 @@ function renderAccumulatorPanel() {
     return;
   }
 
-  const { dolar, idi } = activeRates;
+  const { dolar, idi, euro } = activeRates;
   const moneda = accumEntries[0].moneda;
 
   // 1. Calcular total en la moneda base
@@ -1607,10 +1614,11 @@ function renderAccumulatorPanel() {
     if (e.operacion === 'resta') totalBase -= e.monto;
   }
 
-  // 2. Convertir el total a las tres monedas
-  const totBs  = moneda === 'bs'  ? totalBase : convert(totalBase, moneda, 'bs',  dolar, idi);
-  const totUsd = moneda === 'usd' ? totalBase : convert(totalBase, moneda, 'usd', dolar, idi);
-  const totUvc = moneda === 'uvc' ? totalBase : convert(totalBase, moneda, 'uvc', dolar, idi);
+  // 2. Convertir el total a las monedas de display
+  const totBs  = moneda === 'bs'  ? totalBase : convert(totalBase, moneda, 'bs',  dolar, idi, euro);
+  const totUsd = moneda === 'usd' ? totalBase : convert(totalBase, moneda, 'usd', dolar, idi, euro);
+  const totEur = moneda === 'eur' ? totalBase : convert(totalBase, moneda, 'eur', dolar, idi, euro);
+  const totUvc = moneda === 'uvc' ? totalBase : convert(totalBase, moneda, 'uvc', dolar, idi, euro);
 
   const negStyle = v => v < 0 ? ' style="color:var(--red)"' : '';
   const codeLbl  = CURRENCY_INFO[moneda]?.code ?? moneda.toUpperCase();
@@ -1618,15 +1626,17 @@ function renderAccumulatorPanel() {
   // 3. Filas — monto siempre positivo, prefijo visual según operacion
   const rows = accumEntries.map((e, i) => {
     const isResta = e.operacion === 'resta';
-    const bs  = moneda === 'bs'  ? e.monto : Math.abs(convert(e.monto, moneda, 'bs',  dolar, idi) ?? 0);
-    const usd = moneda === 'usd' ? e.monto : Math.abs(convert(e.monto, moneda, 'usd', dolar, idi) ?? 0);
-    const uvc = moneda === 'uvc' ? e.monto : Math.abs(convert(e.monto, moneda, 'uvc', dolar, idi) ?? 0);
+    const bs  = moneda === 'bs'  ? e.monto : Math.abs(convert(e.monto, moneda, 'bs',  dolar, idi, euro) ?? 0);
+    const usd = moneda === 'usd' ? e.monto : Math.abs(convert(e.monto, moneda, 'usd', dolar, idi, euro) ?? 0);
+    const eur = moneda === 'eur' ? e.monto : Math.abs(convert(e.monto, moneda, 'eur', dolar, idi, euro) ?? 0);
+    const uvc = moneda === 'uvc' ? e.monto : Math.abs(convert(e.monto, moneda, 'uvc', dolar, idi, euro) ?? 0);
     return `
     <tr${isResta ? ' class="accum-row-neg"' : ''}>
       <td>${i + 1}</td>
       <td>${fmtVe(e.monto)}<span class="accum-orig-code">${codeLbl}</span></td>
       <td>${fmtVe(bs)}</td>
       <td>${fmtVe(usd)}</td>
+      <td>${fmtVe(eur)}</td>
       <td>${fmtVe(uvc)}</td>
       <td><button class="accum-del-btn" data-id="${e.id}" title="Eliminar fila">×</button></td>
     </tr>`;
@@ -1635,7 +1645,7 @@ function renderAccumulatorPanel() {
   $id('accumRows').innerHTML = `
     <table class="accum-table">
       <thead>
-        <tr><th>#</th><th>Monto original</th><th>Bs</th><th>USD</th><th>UVC</th><th></th></tr>
+        <tr><th>#</th><th>Monto original</th><th>Bs</th><th>USD</th><th>EUR</th><th>UVC</th><th></th></tr>
       </thead>
       <tbody>${rows}</tbody>
       <tfoot>
@@ -1643,6 +1653,7 @@ function renderAccumulatorPanel() {
           <td colspan="2">Total</td>
           <td${negStyle(totBs)}>${fmtVe(totBs)}</td>
           <td${negStyle(totUsd)}>${fmtVe(totUsd)}</td>
+          <td${negStyle(totEur)}>${fmtVe(totEur)}</td>
           <td${negStyle(totUvc)}>${fmtVe(totUvc)}</td>
           <td></td>
         </tr>
@@ -1679,7 +1690,7 @@ function saveCurrentToHistory() {
   const raw    = parseVeAmount(rawVal);
   if (!rawVal || isNaN(raw) || raw <= 0 || !activeRates || !activeDate) return;
 
-  const { dolar, idi } = activeRates;
+  const { dolar, idi, euro } = activeRates;
   const from     = $id('fromCurrency').value;
   const bsTypeEl = document.querySelector('input[name="bsType"]:checked');
   const bsType   = from === 'bs' ? (bsTypeEl?.value ?? 'digital') : null;
@@ -1692,7 +1703,7 @@ function saveCurrentToHistory() {
     results.push({ to: 'bs_digital', formatted: fmtVe(amount) });
   }
   ALL_CURRENCIES.filter(t => t !== from).forEach(to => {
-    const val = convert(amount, from, to, dolar, idi);
+    const val = convert(amount, from, to, dolar, idi, euro);
     if (val !== null) results.push({ to, formatted: fmtVe(val) });
   });
 
@@ -1704,7 +1715,7 @@ function saveCurrentToHistory() {
     from, bsType,
     rawAmount:   raw,
     fmtAmount:   fmtAmountInput(raw),
-    dolar, idi,
+    dolar, idi, euro: euro ?? null,
     results,
   };
 
@@ -1780,7 +1791,7 @@ function renderHistory() {
         </div>
       </div>
       <div class="hist-results">${resHtml}</div>
-      <div class="hist-rate-info">1 USD = ${fmtVeFull(e.dolar)} Bs &nbsp;|&nbsp; IDI: ${fmtVeFull(e.idi)}</div>
+      <div class="hist-rate-info">1 USD = ${fmtVeFull(e.dolar)} Bs${e.euro != null ? ` &nbsp;|&nbsp; 1 EUR = ${fmtVeFull(e.euro)} Bs` : ''} &nbsp;|&nbsp; IDI: ${fmtVeFull(e.idi)}</div>
     </div>`;
   }).join('');
 

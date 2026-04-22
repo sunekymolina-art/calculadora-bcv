@@ -909,6 +909,37 @@
       color: var(--red);
       border-color: rgba(248,113,113,0.3);
     }
+
+    /* ── Mora section ── */
+    .mora-section {
+      margin-top: 0.75rem;
+    }
+    .mora-result-box {
+      margin-top: 1rem;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .mora-result-label {
+      font-size: 0.75rem;
+      color: var(--text3);
+      font-weight: 500;
+    }
+    .mora-result-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+    .mora-result-meta {
+      font-size: 0.72rem;
+      color: var(--text3);
+      margin-top: 0.15rem;
+    }
   </style>
 </head>
 <body>
@@ -1008,7 +1039,7 @@
 
   </div><!-- /.col-left (date + form + results) -->
 
-  <!-- Right column: accumulator (desktop); inline after results (mobile) -->
+  <!-- Right column: accumulator + mora -->
   <div class="col-right">
     <div id="accumPanel" class="accum-panel hidden">
       <div class="accum-head">
@@ -1017,6 +1048,26 @@
       </div>
       <div id="accumErrMsg" class="accum-err hidden"></div>
       <div id="accumRows"></div>
+    </div>
+
+    <!-- Mora section -->
+    <div class="card mora-section">
+      <div class="section-label">Interés de Mora — Cartera Comercial</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="moraCapital">Capital adeudado (USD)</label>
+          <input type="text" id="moraCapital" placeholder="0,00" inputmode="decimal" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label for="moraDias">Días de mora</label>
+          <input type="text" id="moraDias" placeholder="0" inputmode="numeric" autocomplete="off">
+        </div>
+      </div>
+      <div id="moraResult" class="mora-result-box" style="display:none;">
+        <div class="mora-result-label">Interés de mora:</div>
+        <div class="mora-result-value" id="moraResultValue"></div>
+        <div class="mora-result-meta">Tasa mora anual: 16,80%</div>
+      </div>
     </div>
   </div><!-- /.col-right -->
 
@@ -2117,6 +2168,26 @@ async function init() {
   $id('histClearBtn').addEventListener('click', clearHistory);
   $id('accumClearBtn').addEventListener('click', clearAccumulator);
   renderHistory();
+
+  // ── Mora ─────────────────────────────────────────────────────────
+  function updateMora() {
+    const capital = parseVeAmount($id('moraCapital').value);
+    const dias    = parseVeAmount($id('moraDias').value);
+    const box     = $id('moraResult');
+    if (!isNaN(capital) && capital > 0 && !isNaN(dias) && dias > 0) {
+      const interes = capital * 0.1680 / 360 * dias;
+      $id('moraResultValue').textContent = fmtVe(interes) + ' USD';
+      box.style.display = '';
+    } else {
+      box.style.display = 'none';
+    }
+  }
+  $id('moraCapital').addEventListener('input', updateMora);
+  $id('moraDias').addEventListener('input', updateMora);
+  $id('moraCapital').addEventListener('blur', () => {
+    const n = parseVeAmount($id('moraCapital').value);
+    if (!isNaN(n)) $id('moraCapital').value = fmtAmountInput(n);
+  });
 }
 
 init().catch(console.error);

@@ -1502,7 +1502,7 @@ function updateFooter() {
 /* ─── API calls ───────────────────────────────────────────────────── */
 
 async function getLiveRates() {
-  const res = await fetch(`${API}/rates`);
+  const res = await fetch(`${API}/api/rates`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -1512,7 +1512,7 @@ async function getHistoricalRates(apiDateStr) {
   abortCtrl = new AbortController();
   const tid = setTimeout(() => abortCtrl.abort(), 35000);
   try {
-    const res = await fetch(`${API}/rates/history?from=${apiDateStr}`, { signal: abortCtrl.signal });
+    const res = await fetch(`${API}/api/rates/history?from=${apiDateStr}`, { signal: abortCtrl.signal });
     clearTimeout(tid);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();

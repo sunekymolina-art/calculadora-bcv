@@ -587,6 +587,37 @@
       text-overflow: ellipsis;
     }
 
+    .copy-words-btn {
+      width: 26px;
+      height: 26px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text3);
+      flex-shrink: 0;
+      font-size: 9px;
+      font-weight: 700;
+      font-family: inherit;
+      letter-spacing: -0.02em;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+
+    .copy-words-btn:hover {
+      background: var(--surface3);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .copy-words-btn.copied {
+      background: rgba(16,185,129,0.12);
+      color: var(--green);
+      border-color: rgba(16,185,129,0.35);
+    }
+
     .res-row-highlight {
       background: linear-gradient(135deg, #0e1f12 0%, #0b1a10 100%);
       border-color: rgba(16,185,129,0.3);
@@ -1249,12 +1280,17 @@ function fmtAmountInput(num) {
 function fmtDateStr(str) {
   if (!str) return '—';
   try {
-    // Handle ISO or similar
+    // API returns DD-MM-YYYY; parse manually to avoid browser MM-DD-YYYY misinterpretation
+    const mDDMMYYYY = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+    if (mDDMMYYYY) {
+      const [, dd, mm, yyyy] = mDDMMYYYY.map(Number);
+      const d = new Date(yyyy, mm - 1, dd);
+      if (!isNaN(d.getTime())) return dateToDisplay(d);
+    }
+    // Fallback: ISO datetime strings (updated_at style)
     const d = new Date(str);
     if (isNaN(d.getTime())) return str;
-    // Adjust for timezone offset to prevent day-shift on date-only strings
     const local = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
-    const base = new Date(str.length <= 10 ? local : d);
     return dateToDisplay(str.length <= 10 ? local : d);
   } catch { return str; }
 }
@@ -1379,6 +1415,138 @@ function syncBsSection() {
 }
 
 
+/* ─── Number to words (Spanish) ─────────────────────────────────── */
+
+function numToWordsES(n, gender) {
+  if (n === 0) return 'cero';
+  const UNITS = ['','un','dos','tres','cuatro','cinco','seis','siete','ocho','nueve',
+    'diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve'];
+  function b100(n, g) {
+    if (n === 1) return g === 'f' ? 'una' : 'un';
+    if (n < 20) return UNITS[n];
+    const t = Math.floor(n / 10), r = n % 10;
+    const T = ['','','veinte','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+    if (t === 2 && r > 0) return r === 1 ? (g === 'f' ? 'veintiuna' : 'veintiún') : 'veinti' + UNITS[r];
+    if (r === 0) return T[t];
+    return T[t] + ' y ' + (r === 1 ? (g === 'f' ? 'una' : 'un') : UNITS[r]);
+  }
+  function b1000(n, g) {
+    if (n === 0) return '';
+    if (n < 100) return b100(n, g);
+    const h = Math.floor(n / 100), r = n % 100;
+    const HM = ['','cien','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+    const HF = ['','cien','doscientas','trescientas','cuatrocientas','quinientas','seiscientas','setecientas','ochocientas','novecientas'];
+    const hStr = (h === 1 && r > 0) ? 'ciento' : (g === 'f' ? HF[h] : HM[h]);
+    return hStr + (r ? ' ' + b100(r, g) : '');
+  }
+  if (n < 1000) return b1000(n, gender);
+  if (n < 1_000_000) {
+    const th = Math.floor(n / 1000), r = n % 1000;
+    return (th === 1 ? 'mil' : b1000(th, 'm') + ' mil') + (r ? ' ' + b1000(r, gender) : '');
+  }
+  const totalM = Math.floor(n / 1_000_000), rM = n % 1_000_000;
+  let mStr;
+  if (totalM < 1000) {
+    mStr = totalM === 1 ? 'un millón' : b1000(totalM, 'm') + ' millones';
+  } else {
+    const mTh = Math.floor(totalM / 1000), mRest = totalM % 1000;
+    mStr = (mTh === 1 ? 'mil' : b1000(mTh, 'm') + ' mil') + (mRest ? ' ' + b1000(mRest, 'm') : '') + ' millones';
+  }
+  return mStr + (rM ? ' ' + (rM < 1000 ? b1000(rM, gender) : numToWordsES(rM, gender)) : '');
+}
+
+function numToWordsUVC(n) {
+  // Feminine agreement throughout: cuatrocientas, doscientas, una, veintiuna…
+  // Exception: ones digit directly before "mil" stays masculine (cuarenta y un mil)
+  // and the count of millions is always masculine (treinta y un millones)
+  if (n === 0) return 'cero';
+  const UNITS = ['','un','dos','tres','cuatro','cinco','seis','siete','ocho','nueve',
+    'diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve'];
+  const HM = ['','cien','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+  const HF = ['','cien','doscientas','trescientas','cuatrocientas','quinientas','seiscientas','setecientas','ochocientas','novecientas'];
+  const T  = ['','','veinte','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa'];
+  function b100(n, go) {
+    if (n === 1) return go === 'f' ? 'una' : 'un';
+    if (n < 20) return UNITS[n];
+    const t = Math.floor(n / 10), r = n % 10;
+    if (t === 2 && r > 0) return r === 1 ? (go === 'f' ? 'veintiuna' : 'veintiún') : 'veinti' + UNITS[r];
+    if (r === 0) return T[t];
+    return T[t] + ' y ' + (r === 1 ? (go === 'f' ? 'una' : 'un') : UNITS[r]);
+  }
+  function b1000(n, gh, go) {
+    if (n === 0) return '';
+    if (n < 100) return b100(n, go);
+    const h = Math.floor(n / 100), r = n % 100;
+    const hStr = (h === 1 && r > 0) ? 'ciento' : (gh === 'f' ? HF[h] : HM[h]);
+    return hStr + (r ? ' ' + b100(r, go) : '');
+  }
+  if (n < 1000) return b1000(n, 'f', 'f');
+  if (n < 1_000_000) {
+    const th = Math.floor(n / 1000), r = n % 1000;
+    // thousands chunk: feminine hundreds ('f'), masculine ones before "mil" ('m')
+    const thStr = th === 1 ? 'mil' : b1000(th, 'f', 'm') + ' mil';
+    return thStr + (r ? ' ' + b1000(r, 'f', 'f') : '');
+  }
+  const totalM = Math.floor(n / 1_000_000), rM = n % 1_000_000;
+  let mStr;
+  if (totalM < 1000) {
+    // count of millions: always masculine
+    mStr = totalM === 1 ? 'un millón' : b1000(totalM, 'm', 'm') + ' millones';
+  } else {
+    const mTh = Math.floor(totalM / 1000), mRest = totalM % 1000;
+    const mThStr = mTh === 1 ? 'mil' : b1000(mTh, 'm', 'm') + ' mil';
+    mStr = mThStr + (mRest ? ' ' + b1000(mRest, 'm', 'm') : '') + ' millones';
+  }
+  return mStr + (rM ? ' ' + (rM < 1000 ? b1000(rM, 'f', 'f') : numToWordsUVC(rM)) : '');
+}
+
+function amountToWords(value, code) {
+  if (value == null || isNaN(value)) return '';
+  const rounded = Math.round(Math.abs(value) * 100) / 100;
+  const intPart = Math.floor(rounded);
+  const decPart = Math.round((rounded - intPart) * 100);
+
+  // UVC: "[entero_femenino] con [decimal] unidades de valor de crédito"
+  if (code === 'uvc') {
+    const intWords = numToWordsUVC(intPart);
+    const noun     = (intPart === 1 && decPart === 0) ? 'unidad de valor de crédito' : 'unidades de valor de crédito';
+    const decWords = decPart > 0 ? numToWordsES(decPart, 'm') : '';
+    // "de" only when noun follows immediately after millón/millones (no decimal intervenes)
+    const needsDe  = !decWords && /\bmillones?$/.test(intWords);
+    const text     = decWords
+      ? intWords + ' con ' + decWords + ' ' + noun
+      : intWords + (needsDe ? ' de ' : ' ') + noun;
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+
+  const C = {
+    usd: { g:'m', sg:'dólar de los estados unidos de américa',  pl:'dólares de los estados unidos de américa',  csg:'centavo',  cpl:'centavos'  },
+    eur: { g:'m', sg:'euro',    pl:'euros',    csg:'céntimo',  cpl:'céntimos'  },
+    bs:  { g:'m', sg:'bolívar', pl:'bolívares', csg:'céntimo',  cpl:'céntimos'  },
+  };
+  const info = C[code];
+  if (!info) return '';
+  const intWords = numToWordsES(intPart, info.g);
+  const intNoun  = intPart === 1 ? info.sg : info.pl;
+  const needsDe  = /\bmillones?$/.test(intWords);
+  let text = intWords + (needsDe ? ' de ' : ' ') + intNoun;
+  if (decPart > 0) {
+    text += ' con ' + numToWordsES(decPart, 'm') + ' ' + (decPart === 1 ? info.csg : info.cpl);
+  }
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function copyWords(text, btn) {
+  const upper   = text.toUpperCase();
+  const restore = () => { btn.textContent = 'Aa'; btn.classList.remove('copied'); };
+  const done    = () => { btn.textContent = '✓'; btn.classList.add('copied'); setTimeout(restore, 2000); };
+  navigator.clipboard.writeText(upper).then(done).catch(() => {
+    const ta = Object.assign(document.createElement('textarea'), { value: upper, style: 'position:fixed;opacity:0' });
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    done();
+  });
+}
+
 /* ─── UI: results (all target currencies) ────────────────────────── */
 
 function updateResult() {
@@ -1406,19 +1574,23 @@ function updateResult() {
     const bsType = document.querySelector('input[name="bsType"]:checked');
     if (bsType && bsType.value === 'soberano') {
       amount = raw / 1_000_000;
-      const fmtDigitales = fmtVe(amount);
+      const fmtDigitales   = fmtVe(amount);
+      const wordsDigitales = amountToWords(amount, 'bs');
       bsDigitalesRow = `
         <div class="res-row res-row-highlight">
-          <div class="res-left">
-            <span class="res-flag">🇻🇪</span>
-            <div>
-              <div><span class="res-name">Bs digitales</span><span class="res-code"> Bs</span></div>
-              <div class="res-note">÷ 1.000.000 (conversión soberanos → digitales)</div>
+          <div class="res-main">
+            <div class="res-left">
+              <span class="res-flag">🇻🇪</span>
+              <div>
+                <div><span class="res-name">Bs digitales</span><span class="res-code"> Bs</span></div>
+                <div class="res-note">÷ 1.000.000 (conversión soberanos → digitales)</div>
+              </div>
             </div>
-          </div>
-          <div class="res-right">
-            <span class="res-value">${fmtDigitales}</span>
-            <button class="copy-btn" data-val="${fmtDigitales}" title="Copiar al portapapeles">${COPY_SVG}</button>
+            <div class="res-right">
+              <span class="res-value">${fmtDigitales}</span>
+              <button class="copy-btn" data-val="${fmtDigitales}" title="Copiar al portapapeles">${COPY_SVG}</button>
+              ${wordsDigitales ? `<button class="copy-words-btn" data-words="${wordsDigitales}" title="Copiar en letras">Aa</button>` : ''}
+            </div>
           </div>
         </div>`;
     }
@@ -1432,6 +1604,7 @@ function updateResult() {
       const result    = convert(amount, from, to, dolar, idi, euro);
       const info      = CURRENCY_INFO[to];
       const formatted = result !== null ? fmtVe(result) : '—';
+      const words     = result !== null ? amountToWords(result, to) : '';
       return `
         <div class="res-row">
           <div class="res-main">
@@ -1446,6 +1619,7 @@ function updateResult() {
               ${result !== null
                 ? `<button class="copy-btn" data-val="${formatted}" title="Copiar al portapapeles">${COPY_SVG}</button>`
                 : ''}
+              ${words ? `<button class="copy-words-btn" data-words="${words}" title="Copiar en letras">Aa</button>` : ''}
               <button class="add-btn" data-amount="${amount}" title="Sumar al acumulado">+</button>
               <button class="sub-btn" data-amount="${amount}" title="Restar del acumulado">−</button>
             </div>
@@ -1458,6 +1632,10 @@ function updateResult() {
 
   el.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', () => copyValue(btn.dataset.val, btn));
+  });
+
+  el.querySelectorAll('.copy-words-btn').forEach(btn => {
+    btn.addEventListener('click', () => copyWords(btn.dataset.words, btn));
   });
 
   el.querySelectorAll('.add-btn, .sub-btn').forEach(btn => {

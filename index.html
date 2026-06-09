@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calculadora BCV — Tasas de Cambio</title>
-  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
   <style>
     :root {
       --bg: #08090f;
@@ -1086,6 +1085,57 @@
       color: var(--red);
       border-color: rgba(248,113,113,0.35);
     }
+
+    /* ── Login form fields ── */
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+
+    .login-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .login-field label {
+      font-size: 0.78rem;
+      color: var(--text3);
+      font-weight: 500;
+    }
+
+    .login-field input {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.875rem;
+      color: var(--text);
+      font-size: 0.95rem;
+      width: 100%;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+      font-family: inherit;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .login-field input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+
+    .login-err {
+      font-size: 0.8rem;
+      color: var(--red);
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: var(--radius-sm);
+      padding: 0.5rem 0.75rem;
+      text-align: left;
+    }
   </style>
 </head>
 <body>
@@ -1095,7 +1145,18 @@
     <div class="login-logo">💱</div>
     <div class="login-title">Calculadora BCV</div>
     <div class="login-subtitle">Tasas oficiales del Banco Central de Venezuela</div>
-    <button class="login-btn" id="loginBtn">Iniciar sesión</button>
+    <div class="login-form">
+      <div class="login-field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="tu@email.com" autocomplete="email">
+      </div>
+      <div class="login-field">
+        <label for="loginPassword">Contraseña</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="login-err hidden" id="loginErr"></div>
+      <button class="login-btn" id="loginBtn">Iniciar sesión</button>
+    </div>
     <div class="login-footer">Acceso restringido — solo usuarios autorizados</div>
   </div>
 </div>
@@ -1274,7 +1335,6 @@ const HOLIDAYS = {
 };
 
 /* ─── State ───────────────────────────────────────────────────────── */
-let auth0Client  = null;
 let accessToken  = null;
 let liveRates    = null;   // {dolar, idi, idi_date, updated_at}
 let activeRates  = null;   // {dolar, idi} used for current calculation
@@ -2506,51 +2566,93 @@ async function init() {
   });
 }
 
-/* ─── Auth0 ──────────────────────────────────────────────────────── */
+/* ─── Auth (custom backend) ──────────────────────────────────────── */
 
-async function initAuth0() {
-  auth0Client = await auth0.createAuth0Client({
-    domain: 'dev-z88basn0fhauwxqg.us.auth0.com',
-    clientId: 'IDrhQw5u9TkvGus2NxuA9ywB6k1ny8Ug',
-    authorizationParams: { redirect_uri: 'https://calculadora-bcv-two.vercel.app' },
-    cacheLocation: 'localstorage',
-  });
+const AUTH_API = 'https://bcv-rates-api-development.up.railway.app';
 
-  // Handle redirect callback — use finally to always clean the URL,
-  // even if handleRedirectCallback throws (expired code, state mismatch, etc.)
-  if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
-    try {
-      await auth0Client.handleRedirectCallback();
-    } catch (e) {
-      console.error('[Auth0] handleRedirectCallback failed:', e);
-    } finally {
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }
+function showCalculator(email) {
+  $id('loginScreen').style.display = 'none';
+  $id('headerUser').style.display  = 'flex';
+  $id('headerEmail').textContent   = email ?? '';
+}
 
-  const authenticated = await auth0Client.isAuthenticated();
-
-  if (authenticated) {
-    const user = await auth0Client.getUser();
-    try { accessToken = await auth0Client.getTokenSilently(); } catch { /* offline / no audience */ }
-    $id('loginScreen').style.display = 'none';
-    $id('headerUser').style.display  = 'flex';
-    $id('headerEmail').textContent   = user?.email ?? '';
-    await init();
+function checkAuth() {
+  const token = localStorage.getItem('bcv_token');
+  const email = localStorage.getItem('bcv_email');
+  if (token) {
+    accessToken = token;
+    showCalculator(email);
+    init().catch(console.error);
   } else {
     $id('loginScreen').style.display = 'flex';
   }
 }
 
-$id('loginBtn').addEventListener('click', () => {
-  auth0Client.loginWithRedirect();
-});
+async function doLogin() {
+  const email    = $id('loginEmail').value.trim();
+  const password = $id('loginPassword').value;
+  const errEl    = $id('loginErr');
+  const btn      = $id('loginBtn');
 
-$id('logoutBtn').addEventListener('click', () => {
-  auth0Client.logout({ logoutParams: { returnTo: 'https://calculadora-bcv-two.vercel.app' } });
-});
+  if (!email || !password) {
+    errEl.textContent = 'Ingresá tu email y contraseña.';
+    errEl.classList.remove('hidden');
+    return;
+  }
 
-initAuth0().catch(console.error);
+  btn.disabled    = true;
+  btn.textContent = 'Iniciando sesión…';
+  errEl.classList.add('hidden');
+
+  try {
+    const res = await fetch(`${AUTH_API}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || data.error || 'Credenciales incorrectas.');
+    }
+
+    const data  = await res.json();
+    const token = data.token || data.access_token || data.accessToken;
+
+    if (!token) throw new Error('No se recibió token del servidor.');
+
+    localStorage.setItem('bcv_token', token);
+    localStorage.setItem('bcv_email', email);
+    accessToken = token;
+
+    showCalculator(email);
+    await init();
+
+  } catch (e) {
+    errEl.textContent = e.message || 'Credenciales incorrectas. Intentá de nuevo.';
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Iniciar sesión';
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('bcv_token');
+  localStorage.removeItem('bcv_email');
+  accessToken = null;
+  $id('headerUser').style.display  = 'none';
+  $id('loginScreen').style.display = 'flex';
+  $id('loginEmail').value    = '';
+  $id('loginPassword').value = '';
+  $id('loginErr').classList.add('hidden');
+}
+
+$id('loginBtn').addEventListener('click', doLogin);
+$id('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+$id('logoutBtn').addEventListener('click', doLogout);
+
+checkAuth();
 </script>
 </body>
 </html>

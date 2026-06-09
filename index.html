@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calculadora BCV — Tasas de Cambio</title>
+  <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
   <style>
     :root {
       --bg: #08090f;
@@ -971,15 +972,143 @@
       color: var(--text3);
       margin-top: 0.15rem;
     }
+
+    /* ── Auth: login screen ── */
+    #loginScreen {
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 1.5rem;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      padding: 2.75rem 2rem 2rem;
+      max-width: 370px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.55), 0 0 80px rgba(59,130,246,0.05);
+    }
+
+    .login-logo {
+      width: 58px;
+      height: 58px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 60%, #60a5fa 100%);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      margin: 0 auto 1.35rem;
+      box-shadow: 0 0 30px rgba(59,130,246,0.38);
+    }
+
+    .login-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      margin-bottom: 0.4rem;
+    }
+
+    .login-subtitle {
+      font-size: 0.79rem;
+      color: var(--text3);
+      line-height: 1.5;
+      margin-bottom: 2rem;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 0.875rem 1.5rem;
+      background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      box-shadow: 0 4px 20px rgba(59,130,246,0.38);
+    }
+
+    .login-btn:hover  { opacity: 0.9; transform: translateY(-1px); }
+    .login-btn:active { transform: translateY(0); opacity: 1; }
+
+    .login-footer {
+      margin-top: 1.5rem;
+      font-size: 0.7rem;
+      color: var(--text3);
+    }
+
+    /* ── Auth: header user info ── */
+    .header-user {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+
+    .header-email {
+      font-size: 0.71rem;
+      color: var(--text3);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 480px) { .header-email { display: none; } }
+
+    .logout-btn {
+      font-size: 0.7rem;
+      font-family: inherit;
+      color: var(--text3);
+      background: transparent;
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      padding: 0.3rem 0.7rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, color 0.12s, border-color 0.12s;
+    }
+
+    .logout-btn:hover {
+      background: rgba(248,113,113,0.1);
+      color: var(--red);
+      border-color: rgba(248,113,113,0.35);
+    }
   </style>
 </head>
 <body>
+
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">💱</div>
+    <div class="login-title">Calculadora BCV</div>
+    <div class="login-subtitle">Tasas oficiales del Banco Central de Venezuela</div>
+    <button class="login-btn" id="loginBtn">Iniciar sesión</button>
+    <div class="login-footer">Acceso restringido — solo usuarios autorizados</div>
+  </div>
+</div>
 
 <header>
   <div class="logo">💱</div>
   <div class="logo-text">
     <h1>Calculadora BCV</h1>
     <p>Tasas oficiales del Banco Central de Venezuela</p>
+  </div>
+  <div class="header-user" id="headerUser" style="display:none;">
+    <span class="header-email" id="headerEmail"></span>
+    <button class="logout-btn" id="logoutBtn">Cerrar sesión</button>
   </div>
 </header>
 
@@ -1145,6 +1274,8 @@ const HOLIDAYS = {
 };
 
 /* ─── State ───────────────────────────────────────────────────────── */
+let auth0Client  = null;
+let accessToken  = null;
 let liveRates    = null;   // {dolar, idi, idi_date, updated_at}
 let activeRates  = null;   // {dolar, idi} used for current calculation
 let activeDate   = null;   // Date object
@@ -1679,8 +1810,12 @@ function updateFooter() {
 
 /* ─── API calls ───────────────────────────────────────────────────── */
 
+function authHeaders() {
+  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+}
+
 async function getLiveRates() {
-  const res = await fetch(`${API}/api/rates`);
+  const res = await fetch(`${API}/api/rates`, { headers: authHeaders() });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -1690,7 +1825,10 @@ async function getHistoricalRates(apiDateStr) {
   abortCtrl = new AbortController();
   const tid = setTimeout(() => abortCtrl.abort(), 35000);
   try {
-    const res = await fetch(`${API}/api/rates/history?from=${apiDateStr}`, { signal: abortCtrl.signal });
+    const res = await fetch(`${API}/api/rates/history?from=${apiDateStr}`, {
+      headers: authHeaders(),
+      signal: abortCtrl.signal,
+    });
     clearTimeout(tid);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
@@ -2368,7 +2506,51 @@ async function init() {
   });
 }
 
-init().catch(console.error);
+/* ─── Auth0 ──────────────────────────────────────────────────────── */
+
+async function initAuth0() {
+  auth0Client = await auth0.createAuth0Client({
+    domain: 'dev-z88basn0fhauwxqg.us.auth0.com',
+    clientId: 'IDrhQw5u9TkvGus2NxuA9ywB6k1ny8Ug',
+    authorizationParams: { redirect_uri: 'https://calculadora-bcv-two.vercel.app' },
+    cacheLocation: 'localstorage',
+  });
+
+  // Handle redirect callback — use finally to always clean the URL,
+  // even if handleRedirectCallback throws (expired code, state mismatch, etc.)
+  if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
+    try {
+      await auth0Client.handleRedirectCallback();
+    } catch (e) {
+      console.error('[Auth0] handleRedirectCallback failed:', e);
+    } finally {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+
+  const authenticated = await auth0Client.isAuthenticated();
+
+  if (authenticated) {
+    const user = await auth0Client.getUser();
+    try { accessToken = await auth0Client.getTokenSilently(); } catch { /* offline / no audience */ }
+    $id('loginScreen').style.display = 'none';
+    $id('headerUser').style.display  = 'flex';
+    $id('headerEmail').textContent   = user?.email ?? '';
+    await init();
+  } else {
+    $id('loginScreen').style.display = 'flex';
+  }
+}
+
+$id('loginBtn').addEventListener('click', () => {
+  auth0Client.loginWithRedirect();
+});
+
+$id('logoutBtn').addEventListener('click', () => {
+  auth0Client.logout({ logoutParams: { returnTo: 'https://calculadora-bcv-two.vercel.app' } });
+});
+
+initAuth0().catch(console.error);
 </script>
 </body>
 </html>

@@ -1871,11 +1871,24 @@ function updateFooter() {
 /* ─── API calls ───────────────────────────────────────────────────── */
 
 function authHeaders() {
-  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+  const token = accessToken || localStorage.getItem('bcv_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function handleUnauthorized() {
+  localStorage.removeItem('bcv_token');
+  localStorage.removeItem('bcv_email');
+  accessToken = null;
+  $id('headerUser').style.display  = 'none';
+  $id('loginScreen').style.display = 'flex';
+  $id('loginEmail').value    = '';
+  $id('loginPassword').value = '';
+  $id('loginErr').classList.add('hidden');
 }
 
 async function getLiveRates() {
   const res = await fetch(`${API}/api/rates`, { headers: authHeaders() });
+  if (res.status === 401) { handleUnauthorized(); throw new Error('No autorizado'); }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -1890,6 +1903,7 @@ async function getHistoricalRates(apiDateStr) {
       signal: abortCtrl.signal,
     });
     clearTimeout(tid);
+    if (res.status === 401) { handleUnauthorized(); throw new Error('No autorizado'); }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   } catch (e) {
